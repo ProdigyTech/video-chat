@@ -19,9 +19,10 @@ export const Room = function ({ roomId }) {
   const [peer, setPeer] = useState(null);
   const [myStream, setMyStream] = useState(null);
   const [socket, setSocket] = useState(io(SocketPath.sockets));
+  const [myId, setMyId] = useState(null);
 
-  const addConnectedUser = (user) => {
-    setConnectedUsers([...connectedUsers, user]);
+  const addConnectedUsers = (user) => {
+    setConnectedUsers(user);
   };
 
   // Load peer library and make peer
@@ -35,13 +36,15 @@ export const Room = function ({ roomId }) {
       peer.on("open", (id) => {
         console.log("peer opened");
         socket.emit("join-room", roomId, id);
+        setMyId(id);
       });
-      socket.on("user-connected", (userId) => {
-        console.log(`${userId} user connected`);
+      socket.on("user-connected", ({ userId }) => {
+        console.log("user connected:", userId);
+
         // const call = peer.call(userId, myStream);
         // call.on("stream", (userVideoStream) => {
         // console.log(`${userId} stream received`);
-        addConnectedUser(userId);
+
         // });
       });
 
@@ -59,12 +62,24 @@ export const Room = function ({ roomId }) {
       });
   }, []);
 
+  socket.on("load-connected-users", ({ connections }) => {
+    addConnectedUsers(connections);
+  });
+
   return (
     <Paper>
       <Grid container spacing={3}>
         <Grid item>Room: {roomId}</Grid>
         <Grid item xs={12}>
-          Connected Users {connectedUsers}
+          <ul>
+            {connectedUsers.map((user) => {
+              return user.peerId == myId ? (
+                <li>{user.peerId} (you) </li>
+              ) : (
+                <li>{user.peerId}</li>
+              );
+            })}
+          </ul>
           <Video
             socket={socket}
             isSelf={true}
