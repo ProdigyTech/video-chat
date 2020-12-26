@@ -5,13 +5,16 @@ import { useEffect, useState } from "react";
 import { SocketPath } from "util/Sockets";
 import io from "socket.io-client";
 
+export async function getServerSideProps(context) {
+  const { roomId } = context.query;
+  return { props: { roomId: roomId } };
+}
+
 function loadPeerPromise() {
   return import("peerjs").then((mod) => mod.default);
 }
 
-export const Room = function (props) {
-  const router = useRouter();
-  const { roomId } = router.query;
+export const Room = function ({ roomId }) {
   const [connectedUsers, setConnectedUsers] = useState([]);
   const [peer, setPeer] = useState(null);
   const [myStream, setMyStream] = useState(null);
