@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { SocketPath } from "util/Sockets";
 import io from "socket.io-client";
-let Peer;
 
 function loadPeerPromise() {
   return import("peerjs").then((mod) => mod.default);
