@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { Layout } from "Util/Layout";
 import { useState, useEffect } from "react";
 import { uuid } from "uuidv4";
-import io from "socket.io-client";
+
 export default function Home() {
   const [roomID, setRoomID] = useState("");
   const router = useRouter();
@@ -15,15 +15,6 @@ export default function Home() {
     router.push(`/room/${uuid()}`);
     /** Do some logic here to create a new room on the server  */
   };
-
-  useEffect(() => {
-    const socket = io();
-
-    socket.on("woot", (data) => {
-      console.log(data);
-    });
-  }, []);
-
   return (
     <Layout>
       <Dialog
