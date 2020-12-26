@@ -21,7 +21,7 @@ export default function Video({
           videoRef.current.muted = true;
         })
         .catch(() => {
-          console.log("Failed to get my video");
+          console.warn("Failed to get my video");
         });
     }, []);
   }

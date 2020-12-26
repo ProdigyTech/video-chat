@@ -13,6 +13,8 @@ export const Room = function (props) {
   const router = useRouter();
   const { roomId } = router.query;
 
+  let peer;
+
   const socket = io(SocketPath.sockets);
   useEffect(() => {
     const script = document.createElement("script");
@@ -30,7 +32,7 @@ export const Room = function (props) {
 
   useEffect(() => {
     if (isScriptLoaded && isScriptAdded && Peer) {
-      var peer = new Peer(undefined, {
+      peer = new Peer(undefined, {
         host: "/",
         port: "3001",
       });
