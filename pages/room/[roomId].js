@@ -10,10 +10,10 @@ export const Room = function (props) {
   const [isScriptAdded, setScriptAdded] = useState(false);
   const [isError, setError] = useState(false);
 
+  const [peer, setPeer] = useState(null);
+
   const router = useRouter();
   const { roomId } = router.query;
-
-  let peer;
 
   const socket = io(SocketPath.sockets);
   useEffect(() => {
@@ -32,13 +32,15 @@ export const Room = function (props) {
 
   useEffect(() => {
     if (isScriptLoaded && isScriptAdded && Peer) {
-      peer = new Peer(undefined, {
+      const myPeer = new Peer(undefined, {
         host: "/",
         port: "3001",
       });
-      peer.on("open", (id) => {
+      myPeer.on("open", (id) => {
         socket.emit("join-room", roomId, id);
       });
+
+      setPeer(myPeer);
     }
   }, [isScriptAdded, isScriptLoaded]);
 
@@ -51,7 +53,7 @@ export const Room = function (props) {
       <Grid container spacing={3}>
         <Grid item>Room: {roomId}</Grid>
         <Grid item xs={12}>
-          <Video isSelf={true} />
+          <Video peer={peer} isSelf={true} />
         </Grid>
       </Grid>
     </Paper>
