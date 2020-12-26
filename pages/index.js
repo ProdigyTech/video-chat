@@ -1,5 +1,5 @@
 import { Modal } from "Components";
-import { Layout } from "../util/Layout";
+import { Layout } from "Util/Layout";
 
 export default function Home() {
   return (
