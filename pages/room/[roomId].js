@@ -1,9 +1,10 @@
 import { Grid, Paper, withTheme } from "@material-ui/core";
 import Video from "components/Video";
-import { withRouter } from "next/router";
+import { useRouter } from "next/router";
 
-export const Room = withRouter(function (props) {
-  const { roomId } = props.router.query;
+export const Room = function (props) {
+  const router = useRouter();
+  const { roomId } = router.query;
   return (
     <Paper>
       <Grid container spacing={3}>
@@ -14,6 +15,6 @@ export const Room = withRouter(function (props) {
       </Grid>
     </Paper>
   );
-});
+};
 
 export default Room;
