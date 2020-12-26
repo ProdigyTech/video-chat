@@ -15,72 +15,53 @@ export const Room = function (props) {
   const [connectedUsers, setConnectedUsers] = useState([]);
   const [peer, setPeer] = useState(null);
   const [myStream, setMyStream] = useState(null);
-  const socket = io(SocketPath.sockets);
+  const [socket, setSocket] = useState(io(SocketPath.sockets));
 
+  const addConnectedUser = (user) => {
+    setConnectedUsers([...connectedUsers, user]);
+  };
+
+  // Load peer library and make peer
   useEffect(() => {
     loadPeerPromise().then((Peer) => {
-      const myPeer = new Peer(undefined, {
-        host: "/",
-        port: "3001",
+      const peer = new Peer(undefined, {
+        host: "localhost",
+        port: 3001,
       });
-      myPeer.on("open", (id) => {
+      // Set up peer open handler
+      peer.on("open", (id) => {
+        console.log("peer opened");
         socket.emit("join-room", roomId, id);
       });
-      setPeer(myPeer);
+      socket.on("user-connected", (userId) => {
+        console.log(`${userId} user connected`);
+        // const call = peer.call(userId, myStream);
+        // call.on("stream", (userVideoStream) => {
+        // console.log(`${userId} stream received`);
+        addConnectedUser(userId);
+        // });
+      });
+
+      setPeer(peer);
     });
+
+    // Load own camera
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: true,
+        video: true,
+      })
+      .then((stream) => {
+        setMyStream(stream);
+      });
   }, []);
-
-  useEffect(() => {
-    if (peer) {
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: true,
-        })
-        .then((stream) => {
-          setMyStream(stream);
-          socket.on("user-connected", (userId) => {
-            connectToNewUser(userId, stream);
-          });
-        })
-        .catch((e) => {
-          console.log(e);
-          console.warn("Failed to get my video");
-        });
-    }
-  }, [peer]);
-  // useEffect(() => {
-  //   if (peer) {
-  //     peer.on("call", (call) => {
-  //       call.answer(myStream);
-  //       call.on("stream", (userVideoStream) => {
-  //         console.log("userVidstream", userVideoStream);
-  //         setConnectedUsers([...connectedUsers, userVideoStream]);
-  //       });
-  //     });
-  //   }
-  // }, []);
-
-  const connectToNewUser = (userId, stream) => {
-    if (peer) {
-      const call = peer.call(userId, stream);
-      call.on("stream", (userVideoStream) => {
-        console.log("userVidstream", userVideoStream);
-        setConnectedUsers([...connectedUsers, userVideoStream]);
-      });
-
-      call.on("close", (...rest) => {
-        console.log("closed", rest);
-      });
-    }
-  };
-  console.log("connected users", connectedUsers);
 
   return (
     <Paper>
       <Grid container spacing={3}>
         <Grid item>Room: {roomId}</Grid>
         <Grid item xs={12}>
+          Connected Users {connectedUsers}
           <Video
             socket={socket}
             isSelf={true}

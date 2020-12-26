@@ -11,6 +11,7 @@ let port = 3000;
 // Handle connection
 io.on("connect", function (socket) {
   socket.on("join-room", (roomId, userId) => {
+    console.log(`User ${userId} joined room ${roomId}`);
     socket.join(roomId);
     socket.to(roomId).broadcast.emit("user-connected", userId);
   });
