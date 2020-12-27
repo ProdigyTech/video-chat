@@ -16,10 +16,11 @@ function loadPeerPromise() {
 
 export const Room = function ({ roomId }) {
   const [connectedUsers, setConnectedUsers] = useState([]);
-  const [peer, setPeer] = useState(null);
+  const [myPeer, setPeer] = useState(null);
   const [myStream, setMyStream] = useState(null);
   const [socket, setSocket] = useState(io(SocketPath.sockets));
   const [myId, setMyId] = useState(null);
+  const [otherUserStreams, setOtherStreams] = useState([]);
 
   const addConnectedUsers = (user) => {
     setConnectedUsers(user);
@@ -28,6 +29,7 @@ export const Room = function ({ roomId }) {
   // Load peer library and make peer
   useEffect(() => {
     loadPeerPromise().then((Peer) => {
+      // Peer = Peers;
       const peer = new Peer(undefined, {
         host: "localhost",
         port: 3001,
@@ -38,33 +40,44 @@ export const Room = function ({ roomId }) {
         socket.emit("join-room", roomId, id);
         setMyId(id);
       });
-      socket.on("user-connected", ({ userId }) => {
-        console.log("user connected:", userId);
 
-        // const call = peer.call(userId, myStream);
-        // call.on("stream", (userVideoStream) => {
-        // console.log(`${userId} stream received`);
+      // Load own camera
+      navigator.mediaDevices
+        .getUserMedia({
+          audio: true,
+          video: true,
+        })
+        .then((stream) => {
+          setMyStream(stream);
 
-        // });
-      });
+          peer.on("call", (call) => {
+            call.answer(stream);
 
+            call.on("stream", (userVideoStream) => {
+              setOtherStreams([...otherUserStreams, userVideoStream]);
+            });
+          });
+        });
       setPeer(peer);
     });
-
-    // Load own camera
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: true,
-        video: true,
-      })
-      .then((stream) => {
-        setMyStream(stream);
-      });
   }, []);
 
   socket.on("load-connected-users", ({ connections }) => {
     addConnectedUsers(connections);
   });
+
+  useEffect(() => {
+    socket.on("user-connected", ({ userId }) => {
+      if (myPeer && myPeer.call) {
+        console.log(myStream);
+        const call = myPeer.call(userId, myStream);
+        call.on("stream", (userVideoStream) => {
+          setOtherStreams([...otherUserStreams, userVideoStream]);
+          console.log(`${userId} stream received`);
+        });
+      }
+    });
+  }, [myStream]);
 
   return (
     <Paper>
@@ -74,9 +87,9 @@ export const Room = function ({ roomId }) {
           <ul>
             {connectedUsers.map((user) => {
               return user.peerId == myId ? (
-                <li>{user.peerId} (you) </li>
+                <li key={user.peerId}>{user.peerId} (you) </li>
               ) : (
-                <li>{user.peerId}</li>
+                <li key={user.peerId}>{user.peerId}</li>
               );
             })}
           </ul>
@@ -86,10 +99,20 @@ export const Room = function ({ roomId }) {
             roomId={roomId}
             stream={myStream}
           />
+          {otherUserStreams.map((stream, i) => {
+            return (
+              <Video
+                socket={socket}
+                isSelf={false}
+                roomId={roomId}
+                stream={stream}
+                key={i}
+              />
+            );
+          })}
         </Grid>
       </Grid>
     </Paper>
   );
 };
-
 export default Room;
