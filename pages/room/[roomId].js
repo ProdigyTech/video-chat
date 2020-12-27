@@ -29,7 +29,6 @@ export const Room = function ({ roomId }) {
   // Load peer library and make peer
   useEffect(() => {
     loadPeerPromise().then((Peer) => {
-      // Peer = Peers;
       const peer = new Peer(undefined, {
         host: "localhost",
         port: 3001,
@@ -66,10 +65,14 @@ export const Room = function ({ roomId }) {
     addConnectedUsers(connections);
   });
 
+  socket.on("user-disconnected", (userId) => {
+    console.log(userId, "left");
+    console.log(otherUserStreams);
+  });
+
   useEffect(() => {
     socket.on("user-connected", ({ userId }) => {
       if (myPeer && myPeer.call) {
-        console.log(myStream);
         const call = myPeer.call(userId, myStream);
         call.on("stream", (userVideoStream) => {
           setOtherStreams([...otherUserStreams, userVideoStream]);
@@ -99,6 +102,7 @@ export const Room = function ({ roomId }) {
             roomId={roomId}
             stream={myStream}
           />
+          <span>------------ OTHER VIDEOS ------------</span>
           {otherUserStreams.map((stream, i) => {
             return (
               <Video

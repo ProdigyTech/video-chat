@@ -55,6 +55,8 @@ io.on("connect", function (socket) {
       io.in(roomId).emit("load-connected-users", {
         connections: connections[roomId],
       });
+      console.log(userId, socket.id);
+      socket.to(roomId).broadcast.emit("user-disconnected", userId);
     });
   });
 });
