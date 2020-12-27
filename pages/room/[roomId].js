@@ -5,59 +5,118 @@ import { useEffect, useState } from "react";
 import { SocketPath } from "util/Sockets";
 import io from "socket.io-client";
 
-export const Room = function (props) {
-  const [isScriptLoaded, setScriptLoaded] = useState(false);
-  const [isScriptAdded, setScriptAdded] = useState(false);
-  const [isError, setError] = useState(false);
+export async function getServerSideProps(context) {
+  const { roomId } = context.query;
+  return { props: { roomId: roomId } };
+}
 
-  const [peer, setPeer] = useState(null);
+function loadPeerPromise() {
+  return import("peerjs").then((mod) => mod.default);
+}
 
-  const router = useRouter();
-  const { roomId } = router.query;
+export const Room = function ({ roomId }) {
+  const [connectedUsers, setConnectedUsers] = useState([]);
+  const [myPeer, setPeer] = useState(null);
+  const [myStream, setMyStream] = useState(null);
+  const [socket, setSocket] = useState(io(SocketPath.sockets));
+  const [myId, setMyId] = useState(null);
+  const [otherUserStreams, setOtherStreams] = useState([]);
 
-  const socket = io(SocketPath.sockets);
+  const addConnectedUsers = (user) => {
+    setConnectedUsers(user);
+  };
+
+  // Load peer library and make peer
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js";
-    script.id = "peerjs";
-    script.onload = () => {
-      setScriptLoaded(true);
-    };
-    script.onerror = () => {
-      setError(true);
-    };
-    document.head.appendChild(script);
-    setScriptAdded(true);
+    loadPeerPromise().then((Peer) => {
+      const peer = new Peer(undefined, {
+        host: "localhost",
+        port: 3001,
+      });
+      // Set up peer open handler
+      peer.on("open", (id) => {
+        console.log("peer opened");
+        socket.emit("join-room", roomId, id);
+        setMyId(id);
+      });
+
+      // Load own camera
+      navigator.mediaDevices
+        .getUserMedia({
+          audio: true,
+          video: true,
+        })
+        .then((stream) => {
+          setMyStream(stream);
+
+          peer.on("call", (call) => {
+            call.answer(stream);
+
+            call.on("stream", (userVideoStream) => {
+              setOtherStreams([...otherUserStreams, userVideoStream]);
+            });
+          });
+        });
+      setPeer(peer);
+    });
   }, []);
 
-  useEffect(() => {
-    if (isScriptLoaded && isScriptAdded && Peer) {
-      const myPeer = new Peer(undefined, {
-        host: "/",
-        port: "3001",
-      });
-      myPeer.on("open", (id) => {
-        socket.emit("join-room", roomId, id);
-      });
-
-      setPeer(myPeer);
-    }
-  }, [isScriptAdded, isScriptLoaded]);
-
-  socket.on("user-connected", (data) => {
-    console.log("user connected", data);
+  socket.on("load-connected-users", ({ connections }) => {
+    addConnectedUsers(connections);
   });
+
+  socket.on("user-disconnected", (userId) => {
+    console.log(userId, "left");
+    console.log(otherUserStreams);
+  });
+
+  useEffect(() => {
+    socket.on("user-connected", ({ userId }) => {
+      if (myPeer && myPeer.call) {
+        const call = myPeer.call(userId, myStream);
+        call.on("stream", (userVideoStream) => {
+          setOtherStreams([...otherUserStreams, userVideoStream]);
+          console.log(`${userId} stream received`);
+        });
+      }
+    });
+  }, [myStream]);
 
   return (
     <Paper>
       <Grid container spacing={3}>
         <Grid item>Room: {roomId}</Grid>
         <Grid item xs={12}>
-          <Video peer={peer} isSelf={true} />
+          <ul>
+            {connectedUsers.map((user) => {
+              return user.peerId == myId ? (
+                <li key={user.peerId}>{user.peerId} (you) </li>
+              ) : (
+                <li key={user.peerId}>{user.peerId}</li>
+              );
+            })}
+          </ul>
+          <Video
+            socket={socket}
+            isSelf={true}
+            roomId={roomId}
+            stream={myStream}
+          />
+          <span>------------ OTHER VIDEOS ------------</span>
+          {otherUserStreams.map((stream, i) => {
+            return (
+              <Video
+                socket={socket}
+                isSelf={false}
+                roomId={roomId}
+                stream={stream}
+                key={i}
+              />
+            );
+          })}
         </Grid>
       </Grid>
     </Paper>
   );
 };
-
 export default Room;

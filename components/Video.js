@@ -5,26 +5,21 @@ export default function Video({
   isSelf = false,
   name = "Pano",
   src = "myVideo",
+  socket,
+  roomId,
+  stream,
 }) {
   const videoRef = useRef();
 
-  if (isSelf) {
-    useEffect(() => {
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: true,
-        })
-        .then((stream) => {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-          videoRef.current.muted = true;
-        })
-        .catch(() => {
-          console.warn("Failed to get my video");
-        });
-    }, []);
-  }
+  useEffect(() => {
+    if (stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play();
+      if (isSelf) {
+        videoRef.current.muted = true;
+      }
+    }
+  }, [stream]);
 
   return (
     <Grid container alignItems="center" justify="center">
