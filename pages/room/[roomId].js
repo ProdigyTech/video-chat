@@ -1,8 +1,16 @@
-import { Grid, Paper, withTheme } from "@material-ui/core";
+import { Grid, Paper, withTheme, makeStyles } from "@material-ui/core";
 import Video from "components/Video";
 import { useEffect, useState } from "react";
 import { SocketPath } from "util/Sockets";
 import io from "socket.io-client";
+import { Alone } from "components/Alone";
+
+const useStyles = makeStyles((theme) => ({
+  grid: {
+    height: "50%",
+    marginBottom: "5em",
+  },
+}));
 
 export async function getServerSideProps(context) {
   const { roomId } = context.query;
@@ -20,6 +28,8 @@ export const Room = function ({ roomId }) {
   const [socket, setSocket] = useState(io(SocketPath.sockets));
   const [myId, setMyId] = useState(null);
   const [otherUserStreams, setOtherStreams] = useState([]);
+
+  const classes = useStyles();
 
   const addConnectedUsers = (user) => {
     setConnectedUsers(user);
@@ -94,24 +104,34 @@ export const Room = function ({ roomId }) {
               );
             })}
           </ul>
+        </Grid>
+
+        {!otherUserStreams.length ? (
+          <Grid item xs={12} className={classes.grid}>
+            <Alone />
+          </Grid>
+        ) : (
+          otherUserStreams.map((stream, i) => {
+            return (
+              <Grid item xs={12}>
+                <Video
+                  socket={socket}
+                  isSelf={false}
+                  roomId={roomId}
+                  stream={stream}
+                  key={i}
+                />
+              </Grid>
+            );
+          })
+        )}
+        <Grid item xs={12}>
           <Video
             socket={socket}
             isSelf={true}
             roomId={roomId}
             stream={myStream}
           />
-          <span>------------ OTHER VIDEOS ------------</span>
-          {otherUserStreams.map((stream, i) => {
-            return (
-              <Video
-                socket={socket}
-                isSelf={false}
-                roomId={roomId}
-                stream={stream}
-                key={i}
-              />
-            );
-          })}
         </Grid>
       </Grid>
     </Paper>

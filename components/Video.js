@@ -1,14 +1,7 @@
 import { Grid } from "@material-ui/core";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-export default function Video({
-  isSelf = false,
-  name = "Pano",
-  src = "myVideo",
-  socket,
-  roomId,
-  stream,
-}) {
+export default function Video({ isSelf = false, stream }) {
   const videoRef = useRef();
 
   useEffect(() => {
