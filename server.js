@@ -6,7 +6,7 @@ const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev });
 const nextHandler = nextApp.getRequestHandler();
 
-let port = 3000;
+const port = 3000;
 
 let connections = {};
 
@@ -55,7 +55,6 @@ io.on("connect", function (socket) {
       io.in(roomId).emit("load-connected-users", {
         connections: connections[roomId],
       });
-      console.log(userId, socket.id);
       socket.to(roomId).broadcast.emit("user-disconnected", userId);
     });
   });

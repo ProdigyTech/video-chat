@@ -1,6 +1,5 @@
 import { Grid, Paper, withTheme } from "@material-ui/core";
 import Video from "components/Video";
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { SocketPath } from "util/Sockets";
 import io from "socket.io-client";
@@ -51,7 +50,6 @@ export const Room = function ({ roomId }) {
 
           peer.on("call", (call) => {
             call.answer(stream);
-
             call.on("stream", (userVideoStream) => {
               setOtherStreams([...otherUserStreams, userVideoStream]);
             });
@@ -65,9 +63,10 @@ export const Room = function ({ roomId }) {
     addConnectedUsers(connections);
   });
 
+  //TODO: Set up logic to remove disconnected user from the  list of videos
   socket.on("user-disconnected", (userId) => {
-    console.log(userId, "left");
-    console.log(otherUserStreams);
+    // console.log(userId, "left");
+    // console.log(otherUserStreams);
   });
 
   useEffect(() => {
@@ -76,7 +75,6 @@ export const Room = function ({ roomId }) {
         const call = myPeer.call(userId, myStream);
         call.on("stream", (userVideoStream) => {
           setOtherStreams([...otherUserStreams, userVideoStream]);
-          console.log(`${userId} stream received`);
         });
       }
     });
