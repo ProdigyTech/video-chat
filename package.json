@@ -9,7 +9,11 @@
     "dev-server:build": "next build",
     "dev-server:rtc": "nohup peerjs --port 3001 > /dev/null 2>&1 &",
     "dev-server:server": "node server.js",
-    "dev-server": "run-s dev-server:*"
+    "dev-server": "run-s dev-server:*",
+    "prod:build": "next build",
+    "prod:rtc": "nohup peerjs --port 3001 > /dev/null 2>&1 &",
+    "prod:server": "NODE_ENV=production node server.js",
+    "prod": "run-s prod:*"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.32",

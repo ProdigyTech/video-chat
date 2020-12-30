@@ -6,11 +6,11 @@ import io from "socket.io-client";
 import { Alone } from "components/Alone";
 
 const useStyles = makeStyles((theme) => ({
-  grid: {
-    height: "50%",
-    marginBottom: "5em",
-    // marginLeft: "4em",
-  },
+  //grid: //{
+  //   height: "50%",
+  //   marginBottom: "5em",
+  //   marginLeft: "4em",
+  // },
   videoSelf: {
     marginBottom: "5em",
     marginLeft: "4em",
@@ -48,6 +48,7 @@ export const Room = function ({ roomId }) {
         host: "localhost",
         port: 3001,
       });
+
       // Set up peer open handler
       peer.on("open", (id) => {
         console.log("peer opened");
@@ -81,8 +82,8 @@ export const Room = function ({ roomId }) {
 
   //TODO: Set up logic to remove disconnected user from the  list of videos
   socket.on("user-disconnected", (userId) => {
-    // console.log(userId, "left");
-    // console.log(otherUserStreams);
+    console.log(userId, "left");
+    console.log(otherUserStreams);
   });
 
   useEffect(() => {
@@ -98,10 +99,10 @@ export const Room = function ({ roomId }) {
 
   return (
     <>
-      <Paper>
-        <Grid container spacing={3}>
-          <Grid item>Room: {roomId}</Grid>
-          <Grid item xs={12}>
+      <Grid container spacing={3}>
+        <Grid item>Room: {roomId}</Grid>
+        <Grid item xs={12}>
+          <Paper>
             <ul>
               {connectedUsers.map((user) => {
                 return user.peerId == myId ? (
@@ -111,45 +112,44 @@ export const Room = function ({ roomId }) {
                 );
               })}
             </ul>
-          </Grid>
+          </Paper>
         </Grid>
-      </Paper>
-      <Paper>
-        <Grid container spacing={3} className={classes.grid} wrap>
-          {!otherUserStreams.length ? (
-            <Grid item xs={6} spacing={3}>
-              <Alone />
-            </Grid>
-          ) : (
-            otherUserStreams.map((stream, i) => {
-              return (
-                <Grid item xs={3} spacing={3}>
-                  <Card raised>
-                    <Video
-                      socket={socket}
-                      isSelf={false}
-                      roomId={roomId}
-                      stream={stream}
-                      key={i}
-                    />
-                  </Card>
-                </Grid>
-              );
-            })
-          )}
+      </Grid>
 
-          <Grid item xs={3} spacing={3}>
-            <Card raised className={classes.videoSelf}>
-              <Video
-                socket={socket}
-                isSelf={true}
-                roomId={roomId}
-                stream={myStream}
-              />
-            </Card>
+      <Grid container spacing={3} className={classes.grid}>
+        {!otherUserStreams.length ? (
+          <Grid item xs={6} spacing={3}>
+            <Alone />
           </Grid>
+        ) : (
+          otherUserStreams.map((stream, i) => {
+            return (
+              <Grid key={`grid-${i}`} item xs={3}>
+                <Card key={`card-${i}`} raised>
+                  <Video
+                    socket={socket}
+                    isSelf={false}
+                    roomId={roomId}
+                    stream={stream}
+                    myKey={`video-${i}`}
+                  />
+                </Card>
+              </Grid>
+            );
+          })
+        )}
+
+        <Grid item>
+          <Card raised className={classes.videoSelf}>
+            <Video
+              socket={socket}
+              isSelf={true}
+              roomId={roomId}
+              stream={myStream}
+            />
+          </Card>
         </Grid>
-      </Paper>
+      </Grid>
     </>
   );
 };

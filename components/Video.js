@@ -1,7 +1,7 @@
 import { Grid } from "@material-ui/core";
 import { useEffect, useRef } from "react";
 
-export default function Video({ isSelf = false, stream }) {
+export default function Video({ isSelf = false, stream, myKey }) {
   const videoRef = useRef();
 
   useEffect(() => {
@@ -15,7 +15,7 @@ export default function Video({ isSelf = false, stream }) {
   }, [stream]);
 
   return (
-    <Grid container alignItems="center" justify="center">
+    <Grid container alignItems="center" justify="center" key={myKey}>
       <Grid item>
         <video ref={videoRef}></video>
       </Grid>

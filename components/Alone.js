@@ -8,16 +8,17 @@ const useStyles = makeStyles((theme) => ({
   main: {
     height: "50%",
   },
-  sub: { padding: "11rem", flexGrow: 1 },
+  sub: { padding: "5rem", flexGrow: 1 },
   input: { width: "90%" },
 }));
 
 export const Alone = () => {
   const classes = useStyles();
   const [copySuccess, setCopySuccess] = useState("");
-  const [roomLink, setRoomLink] = useState(null);
+  const [roomLink, setRoomLink] = useState("");
   const inputRef = useRef(null);
   let myInput = null;
+
   useEffect(() => {
     setRoomLink(window.location.href);
   }, []);
@@ -35,6 +36,12 @@ export const Alone = () => {
     document.execCommand("copy");
     setCopySuccess("Copied!");
   };
+
+  useEffect(() => {
+    setTimeout(() => {
+      setCopySuccess("");
+    }, 1000);
+  }, [copySuccess]);
 
   return (
     <Grid
