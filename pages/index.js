@@ -1,6 +1,6 @@
 import { Dialog, Input, Button } from "../components";
 import { useRouter } from "next/router";
-import { Layout } from "Util/Layout";
+import { Layout } from "util/Layout";
 import { useState, useEffect } from "react";
 import { uuid } from "uuidv4";
 
