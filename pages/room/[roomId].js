@@ -34,7 +34,7 @@ export const Room = function ({ roomId }) {
   const [socket, setSocket] = useState(io(SocketPath.sockets));
   const [myId, setMyId] = useState(null);
   const [otherUserStreams, setOtherStreams] = useState([]);
-
+  const [peers, setMyPeers] = useState({});
   const classes = useStyles();
 
   const addConnectedUsers = (user) => {
@@ -51,7 +51,6 @@ export const Room = function ({ roomId }) {
 
       // Set up peer open handler
       peer.on("open", (id) => {
-        console.log("peer opened");
         socket.emit("join-room", roomId, id);
         setMyId(id);
       });
@@ -68,11 +67,32 @@ export const Room = function ({ roomId }) {
           peer.on("call", (call) => {
             call.answer(stream);
             call.on("stream", (userVideoStream) => {
-              setOtherStreams([...otherUserStreams, userVideoStream]);
+              const callingUserId = call.provider._id;
+              let stream = {};
+              stream[callingUserId] = userVideoStream;
+              setOtherStreams([...otherUserStreams, stream]);
             });
           });
         });
       setPeer(peer);
+
+      //TODO: Set up logic to remove disconnected user from the  list of videos
+      socket.on("user-disconnected", (userId) => {
+        peers[userId] && peers[userId].close();
+        console.log(`User ${userId} disconnected`);
+        let filteredStreams = otherUserStreams.filter((stream) => {
+          let id = Object.keys(stream)[0];
+
+          if (id !== userId) {
+            return stream;
+          }
+        });
+        setOtherStreams(filteredStreams);
+      });
+
+      socket.on("video-pause-request", (data) => {
+        console.log("video pause request recieved: payload: ", data);
+      });
     });
   }, []);
 
@@ -80,22 +100,42 @@ export const Room = function ({ roomId }) {
     addConnectedUsers(connections);
   });
 
-  //TODO: Set up logic to remove disconnected user from the  list of videos
-  socket.on("user-disconnected", (userId) => {
-    console.log(userId, "left");
-    console.log(otherUserStreams);
-  });
-
   useEffect(() => {
     socket.on("user-connected", ({ userId }) => {
       if (myPeer && myPeer.call) {
         const call = myPeer.call(userId, myStream);
         call.on("stream", (userVideoStream) => {
-          setOtherStreams([...otherUserStreams, userVideoStream]);
+          let stream = {};
+          stream[userId] = userVideoStream;
+          setOtherStreams([...otherUserStreams, stream]);
         });
+        let newPeer = peers;
+        newPeer[userId] = call;
+        setMyPeers(newPeer);
       }
     });
   }, [myStream]);
+
+  useEffect(() => {
+    if (peers && otherUserStreams) {
+      socket.off("audio-pause-request");
+      socket.on("audio-pause-request", (data) => {
+        console.log("audio pause request recieved: payload: ", data);
+
+        const { peerId } = data;
+
+        console.log(peers, otherUserStreams);
+      });
+      socket.off("video-pause-request");
+      socket.on("video-pause-request", (data) => {
+        console.log("audio pause request recieved: payload: ", data);
+
+        const { peerId } = data;
+
+        console.log(peers, otherUserStreams, "omg");
+      });
+    }
+  }, [otherUserStreams, peers]);
 
   return (
     <>
@@ -123,6 +163,7 @@ export const Room = function ({ roomId }) {
           </Grid>
         ) : (
           otherUserStreams.map((stream, i) => {
+            const id = Object.keys(stream)[0];
             return (
               <Grid key={`grid-${i}`} item xs={3}>
                 <Card key={`card-${i}`} raised>
@@ -130,7 +171,7 @@ export const Room = function ({ roomId }) {
                     socket={socket}
                     isSelf={false}
                     roomId={roomId}
-                    stream={stream}
+                    stream={stream[id]}
                     myKey={`video-${i}`}
                   />
                 </Card>

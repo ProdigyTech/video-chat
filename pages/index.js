@@ -1,7 +1,7 @@
 import { Dialog, Input, Button } from "../components";
 import { useRouter } from "next/router";
 import { Layout } from "util/Layout";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { uuid } from "uuidv4";
 
 export default function Home() {

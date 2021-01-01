@@ -46,6 +46,20 @@ io.on("connect", function (socket) {
       connections: connections[roomId],
     });
 
+    socket.on("audio-state-change", function (audioState) {
+      const id = socket.id;
+      console.log(socket.id, "audio state change", audioState);
+      socket.to(roomId).broadcast.emit("audio-pause-request", {
+        socketId: id,
+        peerId: userId,
+        audioState,
+      });
+    });
+
+    socket.on("video-state-change", function (videoState) {
+      console.log(socket.id, "video state change", videoState);
+    });
+
     /// capture the disconnect event, filter out user, reload user list for the room
     socket.on("disconnect", function () {
       connections[roomId] = connections[roomId].filter((conn) => {
