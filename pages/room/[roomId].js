@@ -120,17 +120,18 @@ export const Room = function ({ roomId }) {
           <Paper>
             <ul>
               {connectedUsers.map((user) => {
-                return user.peerId == myId ? (
+                return (
                   <>
-                    <li key={user.peerId}>{user.peerId} (you) </li>
-                    <li>Video status: {user.properties.videoState} </li>
-                    <li>Audio status: {user.properties.audioState} </li>
-                  </>
-                ) : (
-                  <>
-                    <li key={user.peerId}>{user.peerId}</li>
-                    <li>Video status: {user.properties.videoState} </li>
-                    <li>Audio status: {user.properties.audioState} </li>
+                    <li key={user.peerId}>
+                      {user.peerId}
+                      {user.peerId == myId && " (you)"}
+                    </li>
+                    <li key={`${user.peerId}-video`}>
+                      Video status: {user.properties.videoState}{" "}
+                    </li>
+                    <li key={`${user.peerId}-audio`}>
+                      Audio status: {user.properties.audioState}{" "}
+                    </li>
                   </>
                 );
               })}
