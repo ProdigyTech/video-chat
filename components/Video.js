@@ -44,6 +44,7 @@ export default function Video({
       if (videoState == "playing") {
         videoRef.current.pause();
         setVideoState("paused");
+        turnOffStream();
         socket.emit("video-state-change", "paused");
       } else {
         videoRef.current.play();
@@ -51,6 +52,18 @@ export default function Video({
         socket.emit("video-state-change", "playing");
       }
     }
+  };
+
+  // need to look into.
+  const turnOffStream = () => {
+    const localStream = videoRef.current.srcObject;
+    const tracks = localStream.getTracks();
+
+    tracks.forEach((track) => {
+      track.stop();
+    });
+
+    videoRef.current.srcObject = null;
   };
 
   const muteOrUnmuteAudio = () => {

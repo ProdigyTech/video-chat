@@ -66,6 +66,7 @@ export const Room = function ({ roomId }) {
 
           peer.on("call", (call) => {
             call.answer(stream);
+
             call.on("stream", (userVideoStream) => {
               const callingUserId = call.peer;
               let stream = {};
