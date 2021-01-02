@@ -37,9 +37,6 @@ export const Room = function ({ roomId }) {
   const [peers, setMyPeers] = useState({});
   const classes = useStyles();
 
-  const addConnectedUsers = (user) => {
-    setConnectedUsers(user);
-  };
 
   // Load peer library and make peer
   useEffect(() => {
@@ -78,7 +75,7 @@ export const Room = function ({ roomId }) {
       setPeer(peer);
 
       socket.on("load-connected-users", ({ connections }) => {
-        addConnectedUsers(connections);
+        setConnectedUsers(connections);
       });
 
       //TODO: Set up logic to remove disconnected user from the  list of videos
