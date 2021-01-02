@@ -67,7 +67,7 @@ export const Room = function ({ roomId }) {
           peer.on("call", (call) => {
             call.answer(stream);
             call.on("stream", (userVideoStream) => {
-              const callingUserId = call.provider._id;
+              const callingUserId = call.peer;
               let stream = {};
               stream[callingUserId] = userVideoStream;
               setOtherStreams([...otherUserStreams, stream]);
@@ -75,6 +75,10 @@ export const Room = function ({ roomId }) {
           });
         });
       setPeer(peer);
+
+      socket.on("load-connected-users", ({ connections }) => {
+        addConnectedUsers(connections);
+      });
 
       //TODO: Set up logic to remove disconnected user from the  list of videos
       socket.on("user-disconnected", (userId) => {
@@ -89,16 +93,8 @@ export const Room = function ({ roomId }) {
         });
         setOtherStreams(filteredStreams);
       });
-
-      socket.on("video-pause-request", (data) => {
-        console.log("video pause request recieved: payload: ", data);
-      });
     });
   }, []);
-
-  socket.on("load-connected-users", ({ connections }) => {
-    addConnectedUsers(connections);
-  });
 
   useEffect(() => {
     socket.on("user-connected", ({ userId }) => {
@@ -116,27 +112,6 @@ export const Room = function ({ roomId }) {
     });
   }, [myStream]);
 
-  useEffect(() => {
-    if (peers && otherUserStreams) {
-      socket.off("audio-pause-request");
-      socket.on("audio-pause-request", (data) => {
-        console.log("audio pause request recieved: payload: ", data);
-
-        const { peerId } = data;
-
-        console.log(peers, otherUserStreams);
-      });
-      socket.off("video-pause-request");
-      socket.on("video-pause-request", (data) => {
-        console.log("audio pause request recieved: payload: ", data);
-
-        const { peerId } = data;
-
-        console.log(peers, otherUserStreams, "omg");
-      });
-    }
-  }, [otherUserStreams, peers]);
-
   return (
     <>
       <Grid container spacing={3}>
@@ -146,9 +121,17 @@ export const Room = function ({ roomId }) {
             <ul>
               {connectedUsers.map((user) => {
                 return user.peerId == myId ? (
-                  <li key={user.peerId}>{user.peerId} (you) </li>
+                  <>
+                    <li key={user.peerId}>{user.peerId} (you) </li>
+                    <li>Video status: {user.properties.videoState} </li>
+                    <li>Audio status: {user.properties.audioState} </li>
+                  </>
                 ) : (
-                  <li key={user.peerId}>{user.peerId}</li>
+                  <>
+                    <li key={user.peerId}>{user.peerId}</li>
+                    <li>Video status: {user.properties.videoState} </li>
+                    <li>Audio status: {user.properties.audioState} </li>
+                  </>
                 );
               })}
             </ul>
@@ -164,6 +147,10 @@ export const Room = function ({ roomId }) {
         ) : (
           otherUserStreams.map((stream, i) => {
             const id = Object.keys(stream)[0];
+            const filtered = connectedUsers.filter(
+              (user) => user.peerId == id
+            )[0];
+
             return (
               <Grid key={`grid-${i}`} item xs={3}>
                 <Card key={`card-${i}`} raised>
@@ -173,6 +160,8 @@ export const Room = function ({ roomId }) {
                     roomId={roomId}
                     stream={stream[id]}
                     myKey={`video-${i}`}
+                    audioState={filtered?.properties?.audioState}
+                    videoState={filtered?.properties?.videoState}
                   />
                 </Card>
               </Grid>

@@ -8,50 +8,69 @@ import {
   faVolumeUp,
 } from "@fortawesome/free-solid-svg-icons";
 
-export default function Video({ isSelf = false, stream, myKey, socket }) {
-  const [audioState, setAudioState] = useState("unmuted"); //unmuted or muted
-  const [videoState, setVideoState] = useState("playing"); //playing or paused
-  const [videoIcon, setVideoIcon] = useState(faPlayCircle);
-  const [audioIcon, setAudioIcon] = useState(faVolumeMute);
+export default function Video({
+  isSelf = false,
+  stream,
+  myKey,
+  socket,
+  audioState: socketAudioState = "unmuted",
+  videoState: socketVideoState = "playing",
+}) {
+  const [audioState, setAudioState] = useState(socketAudioState); //unmuted or muted
+  const [videoState, setVideoState] = useState(socketVideoState); //playing or paused
+
   const videoRef = useRef();
 
   useEffect(() => {
     if (stream) {
       videoRef.current.srcObject = stream;
-      videoRef.current.play();
+
+      socketVideoState == "playing"
+        ? videoRef.current.play()
+        : videoRef.current.pause();
+
+      socketAudioState == "unmuted"
+        ? (videoRef.current.muted = false)
+        : (videoRef.current.muted = true);
+
       if (isSelf) {
         videoRef.current.muted = true;
       }
     }
-  }, [stream]);
+  }, [stream, socketAudioState, socketVideoState]);
 
   const pauseOrResumeVideo = () => {
     if (videoRef) {
       if (videoState == "playing") {
         videoRef.current.pause();
-        setVideoIcon(faPlayCircle);
         setVideoState("paused");
+        socket.emit("video-state-change", "paused");
       } else {
         videoRef.current.play();
         setVideoState("playing");
-        setVideoIcon(faPauseCircle);
+        socket.emit("video-state-change", "playing");
       }
     }
-    socket.emit("video-state-change", videoState);
   };
 
   const muteOrUnmuteAudio = () => {
     if (videoRef) {
       if (audioState == "unmuted") {
-        setAudioIcon(faVolumeUp);
         setAudioState("muted");
+        socket.emit("audio-state-change", "muted");
       } else {
-        setAudioIcon(faVolumeMute);
         setAudioState("unmuted");
+        socket.emit("audio-state-change", "unmuted");
       }
-
-      socket.emit("audio-state-change", audioState);
     }
+  };
+
+  const getVideoIcon = () => {
+    return videoState == "playing" ? faPauseCircle : faPlayCircle;
+  };
+
+  const getAudioIcon = () => {
+    return audioState == "unmuted" ? faVolumeMute : faVolumeUp;
   };
 
   return (
@@ -67,10 +86,13 @@ export default function Video({ isSelf = false, stream, myKey, socket }) {
       </Grid>
       {isSelf && (
         <Grid item xs={12}>
-          <FontAwesomeIcon icon={videoIcon} onClick={pauseOrResumeVideo} />
-          <FontAwesomeIcon icon={audioIcon} onClick={muteOrUnmuteAudio} />
+          <FontAwesomeIcon icon={getVideoIcon()} onClick={pauseOrResumeVideo} />
+          <FontAwesomeIcon icon={getAudioIcon()} onClick={muteOrUnmuteAudio} />
         </Grid>
       )}
+      Audio: {audioState}
+      <br />
+      Video: {videoState}
     </Grid>
   );
 }

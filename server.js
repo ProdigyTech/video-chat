@@ -19,6 +19,10 @@ io.on("connect", function (socket) {
         {
           peerId: userId,
           socketId: socket.id,
+          properties: {
+            audioState: "unmuted",
+            videoState: "playing",
+          },
         },
       ];
     } else {
@@ -32,6 +36,10 @@ io.on("connect", function (socket) {
               {
                 peerId: userId,
                 socketId: socket.id,
+                properties: {
+                  audioState: "unmuted",
+                  videoState: "playing",
+                },
               },
             ]
           : connections[roomId];
@@ -48,16 +56,50 @@ io.on("connect", function (socket) {
 
     socket.on("audio-state-change", function (audioState) {
       const id = socket.id;
-      console.log(socket.id, "audio state change", audioState);
-      socket.to(roomId).broadcast.emit("audio-pause-request", {
-        socketId: id,
-        peerId: userId,
-        audioState,
+
+      let currentRoomConnections = connections[roomId];
+      const indexToUpdate = currentRoomConnections.findIndex(
+        (data) => data.socketId == id
+      );
+
+      currentRoomConnections[indexToUpdate] = {
+        ...currentRoomConnections[indexToUpdate],
+        properties: {
+          videoState:
+            currentRoomConnections[indexToUpdate].properties.videoState,
+          audioState: audioState,
+        },
+      };
+
+      connections[roomId] = currentRoomConnections;
+
+      io.in(roomId).emit("load-connected-users", {
+        connections: connections[roomId],
       });
     });
 
     socket.on("video-state-change", function (videoState) {
-      console.log(socket.id, "video state change", videoState);
+      const id = socket.id;
+
+      let currentRoomConnections = connections[roomId];
+      const indexToUpdate = currentRoomConnections.findIndex(
+        (data) => data.socketId == id
+      );
+
+      currentRoomConnections[indexToUpdate] = {
+        ...currentRoomConnections[indexToUpdate],
+        properties: {
+          audioState:
+            currentRoomConnections[indexToUpdate].properties.audioState,
+          videoState: videoState,
+        },
+      };
+
+      connections[roomId] = currentRoomConnections;
+
+      io.in(roomId).emit("load-connected-users", {
+        connections: connections[roomId],
+      });
     });
 
     /// capture the disconnect event, filter out user, reload user list for the room
