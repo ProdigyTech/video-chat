@@ -9,10 +9,10 @@ const useStyles = makeStyles((theme) => {
   };
 });
 
-export const Layout = ({ children }) => {
+export const Layout = ({ children, ...rest }) => {
   const classes = useStyles();
   return (
-    <Container className={classes.root} maxWidth="sm">
+    <Container className={classes.root} {...rest}>
       {children}
     </Container>
   );

@@ -1,9 +1,17 @@
-import { Grid, Paper, withTheme, makeStyles, Card } from "@material-ui/core";
+import {
+  Grid,
+  Paper,
+  withTheme,
+  makeStyles,
+  Card,
+  Typography,
+} from "@material-ui/core";
 import Video from "components/Video";
 import { useEffect, useState } from "react";
 import { SocketPath } from "util/Sockets";
 import io from "socket.io-client";
 import { Alone } from "components/Alone";
+import { Layout } from "@/Util/Layout";
 
 const useStyles = makeStyles((theme) => ({
   //grid: //{
@@ -15,6 +23,10 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: "5em",
     marginLeft: "4em",
     border: "1px solid green",
+  },
+  cp: {
+    // container padding
+    padding: theme.spacing(3),
   },
 }));
 
@@ -36,7 +48,6 @@ export const Room = function ({ roomId }) {
   const [otherUserStreams, setOtherStreams] = useState([]);
   const [peers, setMyPeers] = useState({});
   const classes = useStyles();
-
 
   // Load peer library and make peer
   useEffect(() => {
@@ -111,36 +122,19 @@ export const Room = function ({ roomId }) {
   }, [myStream]);
 
   return (
-    <>
-      <Grid container spacing={3}>
-        <Grid item>Room: {roomId}</Grid>
-        <Grid item xs={12}>
-          <Paper>
-            <ul>
-              {connectedUsers.map((user) => {
-                return (
-                  <>
-                    <li key={user.peerId}>
-                      {user.peerId}
-                      {user.peerId == myId && " (you)"}
-                    </li>
-                    <li key={`${user.peerId}-video`}>
-                      Video status: {user.properties.videoState}{" "}
-                    </li>
-                    <li key={`${user.peerId}-audio`}>
-                      Audio status: {user.properties.audioState}{" "}
-                    </li>
-                  </>
-                );
-              })}
-            </ul>
-          </Paper>
-        </Grid>
-      </Grid>
+    <Layout>
+      {/* Debug info */}
+      <Paper className={classes.cp} hidden={true}>
+        <Typography variant="h2">Debug Info</Typography>
+        <div>roomId: {roomId}</div>
+        <div>
+          connectedUsers: <pre>{JSON.stringify(connectedUsers, null, 2)}</pre>
+        </div>
+      </Paper>
 
-      <Grid container spacing={3} className={classes.grid}>
+      <Grid container spacing={3}>
         {!otherUserStreams.length ? (
-          <Grid item xs={6} spacing={3}>
+          <Grid item xs={12}>
             <Alone />
           </Grid>
         ) : (
@@ -179,7 +173,7 @@ export const Room = function ({ roomId }) {
           </Card>
         </Grid>
       </Grid>
-    </>
+    </Layout>
   );
 };
 export default Room;

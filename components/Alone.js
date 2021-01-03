@@ -1,20 +1,25 @@
-import { Grid, makeStyles, Card, Typography } from "@material-ui/core";
+import {
+  Card,
+  Grid,
+  IconButton,
+  makeStyles,
+  Tooltip,
+  Typography,
+} from "@material-ui/core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy } from "@fortawesome/free-solid-svg-icons";
 import Input from "components/Input";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const useStyles = makeStyles((theme) => ({
-  main: {
-    height: "50%",
-  },
-  sub: { padding: "5rem", flexGrow: 1 },
-  input: { width: "90%" },
+  outerContainer: { padding: theme.spacing(3) },
+  gridItemInput: { flexGrow: 1 },
+  copyButton: { padding: theme.spacing(0.5) },
 }));
 
 export const Alone = () => {
   const classes = useStyles();
-  const [copySuccess, setCopySuccess] = useState("");
+  const [copySuccess, setCopySuccess] = useState(false);
   const [roomLink, setRoomLink] = useState("");
   const inputRef = useRef(null);
   let myInput = null;
@@ -34,46 +39,61 @@ export const Alone = () => {
     document.execCommand("copy");
     document.body.removeChild(el);
     document.execCommand("copy");
-    setCopySuccess("Copied!");
+    setCopySuccess(true);
   };
 
   useEffect(() => {
-    setTimeout(() => {
-      setCopySuccess("");
-    }, 1000);
+    if (copySuccess) {
+      setTimeout(() => {
+        setCopySuccess(false);
+      }, 1000);
+    }
   }, [copySuccess]);
 
   return (
-    <Grid
-      container
-      alignItems="center"
-      justify="center"
-      className={classes.main}
-    >
-      <Grid item>
-        <Card raised className={classes.sub}>
-          <Typography variant="h2" color="inherit" noWrap display={`block`}>
-            You're All Alone 😞
-          </Typography>
-          <Typography variant="h2" color="inherit" noWrap display={`block`}>
-            Why not invite some friends?
-          </Typography>
-          <>
-            <Input
-              myRef={(ref) => (myInput = ref)}
-              disabled
-              value={roomLink}
-              className={classes.input}
-            />
-            <FontAwesomeIcon
-              icon={faCopy}
-              onClick={copyLink}
-              className={`copy--icon`}
-            ></FontAwesomeIcon>
-            {copySuccess}
-          </>
-        </Card>
+    <Card raised className={classes.outerContainer}>
+      <Typography variant="h2" color="inherit" display={`block`}>
+        You're All Alone 😞
+      </Typography>
+      <Typography variant="h2" color="inherit" display={`block`}>
+        Why not invite some friends?
+      </Typography>
+      <Grid
+        container
+        direction="row"
+        spacing={3}
+        justify="center"
+        alignItems="center"
+      >
+        <Grid item className={classes.gridItemInput}>
+          <Input
+            myRef={(ref) => (myInput = ref)}
+            disabled
+            value={roomLink}
+            fullWidth={true}
+          />
+        </Grid>
+        <Grid item>
+          <Tooltip
+            title="Link Copied"
+            arrow
+            open={copySuccess}
+            disableFocusListener={true}
+            disableHoverListener={true}
+            disableTouchListener={true}
+            placement="top"
+          >
+            <IconButton>
+              <FontAwesomeIcon
+                className={classes.copyButton}
+                icon={faCopy}
+                onClick={copyLink}
+                size="2x"
+              ></FontAwesomeIcon>
+            </IconButton>
+          </Tooltip>
+        </Grid>
       </Grid>
-    </Grid>
+    </Card>
   );
 };

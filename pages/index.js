@@ -16,7 +16,7 @@ export default function Home() {
     /** Do some logic here to create a new room on the server  */
   };
   return (
-    <Layout>
+    <Layout maxWidth="sm">
       <Dialog
         title={`Chatter me up`}
         action={
