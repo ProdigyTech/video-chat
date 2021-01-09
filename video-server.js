@@ -6,7 +6,14 @@ const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev });
 const nextHandler = nextApp.getRequestHandler();
 
-const port = process.env.NODE_ENV !== "production" ? 3000 : 3100;
+console.log("ENV: ", process.env.NODE_ENV);
+
+const ports = {
+  production: 3100,
+  dev: 3000,
+};
+
+const port = ports[process.env.NODE_ENV] || ports["dev"];
 
 let connections = {};
 
