@@ -85,46 +85,86 @@ export const Room = function ({ roomId }) {
         });
       setPeer(peer);
 
-      socket.on("load-connected-users", ({ connections }) => {
-        setConnectedUsers(connections);
-      });
-
-      //TODO: Set up logic to remove disconnected user from the  list of videos
       socket.on("user-disconnected", (userId) => {
-        peers[userId] && peers[userId].close();
-        console.log(`User ${userId} disconnected`);
-        let filteredStreams = otherUserStreams.filter((stream) => {
-          let id = Object.keys(stream)[0];
-
-          if (id !== userId) {
-            return stream;
-          }
-        });
-        setOtherStreams(filteredStreams);
+        disconnectUser(userId);
       });
     });
   }, []);
 
   useEffect(() => {
     socket.on("user-connected", ({ userId }) => {
-      if (myPeer && myPeer.call) {
-        const call = myPeer.call(userId, myStream);
-        call.on("stream", (userVideoStream) => {
+      callPeer(userId, myStream);
+    });
+  }, [myStream]);
+
+  const callPeer = (userId, passedStream, isReconnect = false) => {
+    const doesStreamExist = (userId) => {
+      let activeIndex;
+      otherUserStreams.forEach((uStream, i) => {
+        const key = Object.keys(uStream)[0];
+        if (key == userId) {
+          activeIndex = i;
+        }
+      });
+      return activeIndex;
+    };
+
+    if (myPeer && myPeer.call) {
+      const call = myPeer.call(userId, passedStream);
+      call.on("stream", (userVideoStream) => {
+        const activeIndex = doesStreamExist(userId);
+        if (isReconnect) {
+          let streamClone = [...otherUserStreams];
+          streamClone[activeIndex] = userVideoStream;
+          setOtherStreams(streamClone);
+        } else if (!isReconnect) {
           let stream = {};
           stream[userId] = userVideoStream;
           setOtherStreams([...otherUserStreams, stream]);
-        });
-        let newPeer = peers;
-        newPeer[userId] = call;
-        setMyPeers(newPeer);
+          let newPeer = peers;
+          newPeer[userId] = call;
+          setMyPeers(newPeer);
+        }
+      });
+    }
+  };
+
+  const disconnectUser = (userId) => {
+    peers[userId] && peers[userId].close();
+    console.log(`User ${userId} disconnected`);
+    let filteredStreams = otherUserStreams.filter((stream) => {
+      let id = Object.keys(stream)[0];
+
+      if (id !== userId) {
+        return stream;
       }
     });
-  }, [myStream]);
+    setOtherStreams(filteredStreams);
+  };
+  const reactivateStream = () => {
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: true,
+        video: true,
+      })
+      .then((stream) => {
+        setMyStream(stream);
+        connectedUsers.forEach((user) => {
+          if (user.peerId !== myId) {
+            callPeer(user.peerId, stream, true);
+          }
+        });
+      });
+  };
+
+  socket.on("load-connected-users", ({ connections }) => {
+    setConnectedUsers(connections);
+  });
 
   return (
     <Layout>
       {/* Debug info */}
-      <Paper className={classes.cp} hidden={true}>
+      <Paper className={classes.cp}>
         <Typography variant="h2">Debug Info</Typography>
         <div>roomId: {roomId}</div>
         <div>
@@ -143,7 +183,6 @@ export const Room = function ({ roomId }) {
             const filtered = connectedUsers.filter(
               (user) => user.peerId == id
             )[0];
-
             return (
               <Grid key={`grid-${i}`} item xs={3}>
                 <Card key={`card-${i}`} raised>
@@ -169,6 +208,7 @@ export const Room = function ({ roomId }) {
               isSelf={true}
               roomId={roomId}
               stream={myStream}
+              reactivateStream={reactivateStream}
             />
           </Card>
         </Grid>

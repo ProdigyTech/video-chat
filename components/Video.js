@@ -15,6 +15,7 @@ export default function Video({
   socket,
   audioState: socketAudioState = "unmuted",
   videoState: socketVideoState = "playing",
+  reactivateStream,
 }) {
   const [audioState, setAudioState] = useState(socketAudioState); //unmuted or muted
   const [videoState, setVideoState] = useState(socketVideoState); //playing or paused
@@ -48,6 +49,7 @@ export default function Video({
         socket.emit("video-state-change", "paused");
       } else {
         videoRef.current.play();
+        reactivateStream();
         setVideoState("playing");
         socket.emit("video-state-change", "playing");
       }
