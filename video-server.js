@@ -128,7 +128,7 @@ nextApp.prepare().then(() => {
     return nextHandler(req, res);
   });
 
-  server.listen(port, (err) => {
+  server.listen(3100, (err) => {
     if (err) throw err;
     console.log(`> Ready on http://localhost:${port}`);
   });
