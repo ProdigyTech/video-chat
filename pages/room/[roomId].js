@@ -55,6 +55,7 @@ export const Room = function ({ roomId }) {
       const peer = new Peer(undefined, {
         host: "localhost",
         port: 3001,
+        secure: true,
       });
 
       // Set up peer open handler
