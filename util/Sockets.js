@@ -1,3 +1,3 @@
 export const SocketPath = {
-  socket: "http://localhost:3000",
+  socket: "http://104.131.28.8:3100",
 };
