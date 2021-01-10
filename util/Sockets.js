@@ -1,3 +1,3 @@
 export const SocketPath = {
-  socket: "https://socketio.prodigytech.us",
+  socket: "http://104.131.28.8:3100/",
 };
