@@ -53,9 +53,9 @@ export const Room = function ({ roomId }) {
   useEffect(() => {
     loadPeerPromise().then((Peer) => {
       const peer = new Peer(undefined, {
-        host: "localhost",
+        host: "video.prodigytech.us",
         port: 3001,
-        secure: true,
+        path: "/",
       });
 
       // Set up peer open handler
