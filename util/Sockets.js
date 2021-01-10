@@ -1,3 +1,3 @@
 export const SocketPath = {
-  socket: "https://videochat.prodigytech.us",
+  socket: "https://socketio.prodigytech.us",
 };
