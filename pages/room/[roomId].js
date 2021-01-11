@@ -43,9 +43,7 @@ export const Room = function ({ roomId }) {
   const [connectedUsers, setConnectedUsers] = useState([]);
   const [myPeer, setPeer] = useState(null);
   const [myStream, setMyStream] = useState(null);
-  const [socket, setSocket] = useState(
-    io(SocketPath.sockets, { transports: ["websocket"] })
-  );
+  const [socket, setSocket] = useState(io(SocketPath.sockets));
   const [myId, setMyId] = useState(null);
   const [otherUserStreams, setOtherStreams] = useState([]);
   const [peers, setMyPeers] = useState({});
