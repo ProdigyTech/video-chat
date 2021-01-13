@@ -47,6 +47,8 @@ export const Room = function ({ roomId }) {
   const [myId, setMyId] = useState(null);
   const [otherUserStreams, setOtherStreams] = useState([]);
   const [peers, setMyPeers] = useState({});
+  const [debugOptionsActivated, setDebugOptions] = useState(false);
+
   const classes = useStyles();
 
   // Load peer library and make peer
@@ -90,6 +92,8 @@ export const Room = function ({ roomId }) {
         disconnectUser(userId);
       });
     });
+
+    window.setDebugOptions = setDebugOptions;
   }, []);
 
   useEffect(() => {
@@ -164,14 +168,15 @@ export const Room = function ({ roomId }) {
 
   return (
     <Layout>
-      {/* Debug info */}
-      <Paper className={classes.cp}>
-        <Typography variant="h2">Debug Info</Typography>
-        <div>roomId: {roomId}</div>
-        <div>
-          connectedUsers: <pre>{JSON.stringify(connectedUsers, null, 2)}</pre>
-        </div>
-      </Paper>
+      {debugOptionsActivated && (
+        <Paper className={classes.cp}>
+          <Typography variant="h2">Debug Info</Typography>
+          <div>roomId: {roomId}</div>
+          <div>
+            connectedUsers: <pre>{JSON.stringify(connectedUsers, null, 2)}</pre>
+          </div>
+        </Paper>
+      )}
 
       <Grid container spacing={3}>
         {!otherUserStreams.length ? (
