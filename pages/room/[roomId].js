@@ -54,7 +54,7 @@ export const Room = function ({ roomId }) {
     loadPeerPromise().then((Peer) => {
       const peer = new Peer(undefined, {
         host: "peerjs.prodigytech.us",
-        secure: false,
+        secure: true,
         path: "/",
       });
 
