@@ -55,7 +55,7 @@ export const Room = function ({ roomId }) {
       const peer = new Peer(undefined, {
         host: "videochat.prodigytech.us",
         secure: true,
-        path: "/peer",
+        path: "/",
       });
 
       // Set up peer open handler
