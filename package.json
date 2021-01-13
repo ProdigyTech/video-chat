@@ -11,7 +11,7 @@
     "dev-server:server": "node video-server.js",
     "dev-server": "run-s dev-server:*",
     "prod:build": "next build",
-    "prod:rtc": "nohup peerjs --port 3001 --proxied=true > /dev/null 2>&1 &",
+    "prod:rtc": "nohup peerjs --port 3001 --proxied true --path /peer > /dev/null 2>&1 &",
     "prod:server": "NODE_ENV=production node video-server.js",
     "prod": "run-s prod:*"
   },
