@@ -94,6 +94,7 @@ export const Room = function ({ roomId }) {
     });
 
     window.setDebugOptions = setDebugOptions;
+    console.log("hi");
   }, []);
 
   useEffect(() => {
