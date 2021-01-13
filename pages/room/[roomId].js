@@ -53,7 +53,7 @@ export const Room = function ({ roomId }) {
   useEffect(() => {
     loadPeerPromise().then((Peer) => {
       const peer = new Peer(undefined, {
-        host: "videochat.prodigytech.us",
+        host: "peerjs.prodigytech.us",
         secure: true,
         path: "/",
       });
