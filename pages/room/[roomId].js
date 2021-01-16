@@ -35,8 +35,8 @@ export async function getServerSideProps(context) {
   return { props: { roomId: roomId } };
 }
 
-function loadPeerPromise() {
-  return import("peerjs").then((mod) => mod.default);
+async function loadPeerPromise() {
+  return await import("peerjs").then((mod) => mod.default);
 }
 
 export const Room = function ({ roomId }) {
@@ -50,6 +50,21 @@ export const Room = function ({ roomId }) {
   const [debugOptionsActivated, setDebugOptions] = useState(false);
 
   const classes = useStyles();
+
+  /** Grab current camera stream */
+  async function getMyMediaStream() {
+    let stream = null;
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true,
+      });
+      setMyStream(stream);
+    } catch (e) {
+      console.log("couldn't get user media stream");
+    }
+  }
 
   // Load peer library and make peer
   useEffect(() => {
@@ -66,26 +81,18 @@ export const Room = function ({ roomId }) {
         setMyId(id);
       });
 
-      // Load own camera
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: true,
-        })
-        .then((stream) => {
-          setMyStream(stream);
+      getMyMediaStream();
 
-          peer.on("call", (call) => {
-            call.answer(stream);
+      peer.on("call", (call) => {
+        call.answer(myStream);
 
-            call.on("stream", (userVideoStream) => {
-              const callingUserId = call.peer;
-              let stream = {};
-              stream[callingUserId] = userVideoStream;
-              setOtherStreams([...otherUserStreams, stream]);
-            });
-          });
+        call.on("stream", (userVideoStream) => {
+          const callingUserId = call.peer;
+          let stream = {};
+          stream[callingUserId] = userVideoStream;
+          setOtherStreams([...otherUserStreams, stream]);
         });
+      });
       setPeer(peer);
 
       socket.on("user-disconnected", (userId) => {
@@ -94,7 +101,6 @@ export const Room = function ({ roomId }) {
     });
 
     window.setDebugOptions = setDebugOptions;
-    console.log("hi");
   }, []);
 
   useEffect(() => {
@@ -147,20 +153,14 @@ export const Room = function ({ roomId }) {
     });
     setOtherStreams(filteredStreams);
   };
+
   const reactivateStream = () => {
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: true,
-        video: true,
-      })
-      .then((stream) => {
-        setMyStream(stream);
-        connectedUsers.forEach((user) => {
-          if (user.peerId !== myId) {
-            callPeer(user.peerId, stream, true);
-          }
-        });
-      });
+    getMyMediaStream();
+    connectedUsers.forEach((user) => {
+      if (user.peerId !== myId) {
+        callPeer(user.peerId, myStream, true);
+      }
+    });
   };
 
   socket.on("load-connected-users", ({ connections }) => {
@@ -191,7 +191,7 @@ export const Room = function ({ roomId }) {
               (user) => user.peerId == id
             )[0];
             return (
-              <Grid key={`grid-${i}`} item xs={3}>
+              <Grid key={`grid-${i}`} item xs={6} zeroMinWidth>
                 <Card key={`card-${i}`} raised>
                   <Video
                     socket={socket}
@@ -208,7 +208,7 @@ export const Room = function ({ roomId }) {
           })
         )}
 
-        <Grid item>
+        <Grid item xs={6} zeroMinWidth>
           <Card raised className={classes.videoSelf}>
             <Video
               socket={socket}

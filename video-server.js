@@ -34,6 +34,7 @@ io.on("connect", function (socket) {
       ];
     } else {
       const currentConnections = connections[roomId];
+      //can i do an append?????
       connections[roomId] =
         !currentConnections.filter(
           (conn) => conn.peerId == userId || conn.socketId == socket.id
