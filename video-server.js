@@ -2,8 +2,8 @@ const app = require("express")();
 const server = require("http").Server(app);
 const io = require("socket.io")(server);
 const next = require("next");
-const dev = process.env.NODE_ENV !== "production";
-const nextApp = next({ production });
+const dev = process.env.NODE_ENV || "dev";
+const nextApp = next({ dev });
 const nextHandler = nextApp.getRequestHandler();
 
 console.log("ENV: ", process.env.NODE_ENV);
