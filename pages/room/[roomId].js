@@ -14,8 +14,8 @@ import { usePeerjs, useSocketIo, useMyVideoStream } from "hooks/";
 
 const useStyles = makeStyles((theme) => ({
   videoSelf: {
-    marginBottom: "5em",
-    marginLeft: "4em",
+    // marginBottom: "5em",
+    // marginLeft: "4em",
     border: "1px solid green",
   },
   cp: {
@@ -230,7 +230,7 @@ export const Room = function ({ roomId }) {
               (user) => user.peerId == id
             )[0];
             return (
-              <Grid key={`grid-${i}`} item xs={6} zeroMinWidth>
+              <Grid key={`grid-${i}`} item xs={12} md={6} zeroMinWidth>
                 <Card key={`card-${i}`} raised>
                   <Video
                     socket={socket}
@@ -247,7 +247,7 @@ export const Room = function ({ roomId }) {
           })
         )}
 
-        <Grid item xs={6} zeroMinWidth>
+        <Grid item xs={12} md={6} zeroMinWidth>
           <Card raised className={classes.videoSelf}>
             <Video
               socket={socket}

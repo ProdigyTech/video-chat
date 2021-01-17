@@ -1,4 +1,4 @@
-import { Grid, Icon } from "@material-ui/core";
+import { Grid, Icon, makeStyles } from "@material-ui/core";
 import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -7,6 +7,12 @@ import {
   faVolumeMute,
   faVolumeUp,
 } from "@fortawesome/free-solid-svg-icons";
+
+const useStyles = makeStyles((theme) => ({
+  video: {
+    maxWidth: "100%",
+  },
+}));
 
 export default function Video({
   isSelf = false,
@@ -22,6 +28,7 @@ export default function Video({
   const [videoState, setVideoState] = useState(socketVideoState); //playing or paused
 
   const videoRef = useRef();
+  const classes = useStyles();
 
   useEffect(() => {
     if (stream) {
@@ -100,7 +107,7 @@ export default function Video({
       direction="row"
     >
       <Grid item xs={12}>
-        <video ref={videoRef}></video>
+        <video ref={videoRef} className={classes.video}></video>
       </Grid>
       {isSelf && (
         <Grid item xs={12}>
