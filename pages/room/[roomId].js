@@ -8,24 +8,17 @@ import {
 } from "@material-ui/core";
 import Video from "components/Video";
 import { useEffect, useState } from "react";
-import { SocketPath } from "util/Sockets";
-import io from "socket.io-client";
 import { Alone } from "components/Alone";
 import { Layout } from "@/Util/Layout";
+import { usePeerjs, useSocketIo, useMyVideoStream } from "hooks/";
 
 const useStyles = makeStyles((theme) => ({
-  //grid: //{
-  //   height: "50%",
-  //   marginBottom: "5em",
-  //   marginLeft: "4em",
-  // },
   videoSelf: {
     marginBottom: "5em",
     marginLeft: "4em",
     border: "1px solid green",
   },
   cp: {
-    // container padding
     padding: theme.spacing(3),
   },
 }));
@@ -35,15 +28,20 @@ export async function getServerSideProps(context) {
   return { props: { roomId: roomId } };
 }
 
-function loadPeerPromise() {
-  return import("peerjs").then((mod) => mod.default);
-}
-
 export const Room = function ({ roomId }) {
   const [connectedUsers, setConnectedUsers] = useState([]);
-  const [myPeer, setPeer] = useState(null);
-  const [myStream, setMyStream] = useState(null);
-  const [socket, setSocket] = useState(io(SocketPath.sockets));
+  const [myPeer] = usePeerjs({
+    host: "peerjs.prodigytech.us",
+    secure: true,
+    path: "/",
+  });
+  const [
+    myStream,
+    activateStream,
+    muteMyVideo,
+    disableVideo,
+  ] = useMyVideoStream();
+  const [socket] = useSocketIo();
   const [myId, setMyId] = useState(null);
   const [otherUserStreams, setOtherStreams] = useState([]);
   const [peers, setMyPeers] = useState({});
@@ -51,59 +49,38 @@ export const Room = function ({ roomId }) {
 
   const classes = useStyles();
 
-  // Load peer library and make peer
   useEffect(() => {
-    loadPeerPromise().then((Peer) => {
-      const peer = new Peer(undefined, {
-        host: "peerjs.prodigytech.us",
-        secure: true,
-        path: "/",
+    if (myPeer && myPeer.on && myStream) {
+      socket.on("load-connected-users", ({ connections }) => {
+        setConnectedUsers(connections);
       });
 
-      // Set up peer open handler
-      peer.on("open", (id) => {
-        socket.emit("join-room", roomId, id);
-        setMyId(id);
+      socket.on("user-connected", ({ userId }) => {
+        console.log(
+          `User connected, ${userId}, attempting to connect to video feed`
+        );
+        callPeer(userId, myStream);
       });
-
-      // Load own camera
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: true,
-        })
-        .then((stream) => {
-          setMyStream(stream);
-
-          peer.on("call", (call) => {
-            call.answer(stream);
-
-            call.on("stream", (userVideoStream) => {
-              const callingUserId = call.peer;
-              let stream = {};
-              stream[callingUserId] = userVideoStream;
-              setOtherStreams([...otherUserStreams, stream]);
-            });
-          });
-        });
-      setPeer(peer);
 
       socket.on("user-disconnected", (userId) => {
         disconnectUser(userId);
       });
-    });
+      // Set up peer open handler
+      myPeer.on("open", (id) => {
+        socket.emit("join-room", roomId, id);
+        setMyId(id);
+      });
+
+      myPeer.on("call", (call) => {
+        answerCall(call);
+      });
+    }
 
     window.setDebugOptions = setDebugOptions;
-    console.log("hi");
-  }, []);
+  }, [myStream, myPeer]);
 
-  useEffect(() => {
-    socket.on("user-connected", ({ userId }) => {
-      callPeer(userId, myStream);
-    });
-  }, [myStream]);
-
-  const callPeer = (userId, passedStream, isReconnect = false) => {
+  /** Runs when you mute / hide video and vice versa */
+  const reconnectToPeers = (userId, passedStream) => {
     const doesStreamExist = (userId) => {
       let activeIndex;
       otherUserStreams.forEach((uStream, i) => {
@@ -114,25 +91,36 @@ export const Room = function ({ roomId }) {
       });
       return activeIndex;
     };
+    const activeIndex = doesStreamExist(userId);
+    const call = myPeer.call(userId, passedStream);
+    call.on("stream", (userVideoStream) => {
+      let streamClone = [...otherUserStreams];
+      streamClone[activeIndex] = userVideoStream;
+      setOtherStreams(streamClone);
+    });
+  };
 
-    if (myPeer && myPeer.call) {
-      const call = myPeer.call(userId, passedStream);
-      call.on("stream", (userVideoStream) => {
-        const activeIndex = doesStreamExist(userId);
-        if (isReconnect) {
-          let streamClone = [...otherUserStreams];
-          streamClone[activeIndex] = userVideoStream;
-          setOtherStreams(streamClone);
-        } else if (!isReconnect) {
-          let stream = {};
-          stream[userId] = userVideoStream;
-          setOtherStreams([...otherUserStreams, stream]);
-          let newPeer = peers;
-          newPeer[userId] = call;
-          setMyPeers(newPeer);
-        }
-      });
-    }
+  const callPeer = (userId, passedStream) => {
+    const call = myPeer.call(userId, passedStream);
+    call.on("stream", (userVideoStream) => {
+      let stream = {};
+      stream[userId] = userVideoStream;
+      setOtherStreams([...otherUserStreams, stream]);
+      let newPeer = peers;
+      newPeer[userId] = call;
+      setMyPeers(newPeer);
+    });
+  };
+
+  /** Answer call when user calls you */
+  const answerCall = (callInstance) => {
+    callInstance.answer(myStream);
+    callInstance.on("stream", (userVideoStream) => {
+      const callingUserId = callInstance.peer;
+      let stream = {};
+      stream[callingUserId] = userVideoStream;
+      setOtherStreams([...otherUserStreams, stream]);
+    });
   };
 
   const disconnectUser = (userId) => {
@@ -147,25 +135,26 @@ export const Room = function ({ roomId }) {
     });
     setOtherStreams(filteredStreams);
   };
+
   const reactivateStream = () => {
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: true,
-        video: true,
-      })
-      .then((stream) => {
-        setMyStream(stream);
-        connectedUsers.forEach((user) => {
-          if (user.peerId !== myId) {
-            callPeer(user.peerId, stream, true);
-          }
-        });
+    activateStream().then((stream) => {
+      connectedUsers.forEach((user) => {
+        if (user.peerId !== myId) {
+          reconnectToPeers(user.peerId, stream);
+        }
       });
+    });
   };
 
-  socket.on("load-connected-users", ({ connections }) => {
-    setConnectedUsers(connections);
-  });
+  const muteMe = () => {
+    muteMyVideo().then((stream) => {
+      connectedUsers.forEach((user) => {
+        if (user.peerId !== myId) {
+          reconnectToPeers(user.peerId, stream);
+        }
+      });
+    });
+  };
 
   return (
     <Layout>
@@ -216,6 +205,7 @@ export const Room = function ({ roomId }) {
               roomId={roomId}
               stream={myStream}
               reactivateStream={reactivateStream}
+              muteMe={muteMe}
             />
           </Card>
         </Grid>
