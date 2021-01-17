@@ -83,11 +83,10 @@ export const Alone = () => {
             disableTouchListener={true}
             placement="top"
           >
-            <IconButton>
+            <IconButton onClick={copyLink}>
               <FontAwesomeIcon
                 className={classes.copyButton}
                 icon={faCopy}
-                onClick={copyLink}
                 size="2x"
               ></FontAwesomeIcon>
             </IconButton>

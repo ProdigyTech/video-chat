@@ -13,4 +13,4 @@ export const Input = ({ onChange, value, myRef, ...rest }) => {
   );
 };
 
-export default forwardRef(Input);
+export default Input;

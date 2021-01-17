@@ -2,7 +2,7 @@ import { Dialog, Input, Button } from "../components";
 import { useRouter } from "next/router";
 import { Layout } from "util/Layout";
 import { useState } from "react";
-import { uuid } from "uuidv4";
+import { v4 as uuidv } from "uuid";
 
 export default function Home() {
   const [roomID, setRoomID] = useState("");
@@ -12,7 +12,7 @@ export default function Home() {
   };
 
   const createNewRoom = () => {
-    router.push(`/room/${uuid()}`);
+    router.push(`/room/${uuidv()}`);
     /** Do some logic here to create a new room on the server  */
   };
   return (
