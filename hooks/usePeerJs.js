@@ -12,7 +12,13 @@ export const usePeerjs = (peerConfig) => {
       const peer = new Peer(undefined, {
         ...peerConfig,
       });
+      // console.log(peer._disconnected, peer);
+      // if (!peer._disconnected) {
+      //   setPeer(null);
+      //   console.warn("peerjs can't initiate a connection");
+      // } else {
       setPeer(peer);
+      //}
     });
   }, []);
 

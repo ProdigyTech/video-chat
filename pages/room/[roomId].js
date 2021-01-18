@@ -10,6 +10,7 @@ import Video from "components/Video";
 import { useEffect, useState } from "react";
 import { Alone } from "components/Alone";
 import { Layout } from "@/Util/Layout";
+import { Dialog } from "components";
 import { usePeerjs, useSocketIo, useMyVideoStream } from "hooks/";
 
 const useStyles = makeStyles((theme) => ({
@@ -44,13 +45,14 @@ export const Room = function ({ roomId }) {
   const [socket] = useSocketIo();
   const [myId, setMyId] = useState(null);
   const [otherUserStreams, setOtherStreams] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [peers, setMyPeers] = useState([]);
   const [debugOptionsActivated, setDebugOptions] = useState(false);
 
   const classes = useStyles();
 
   useEffect(() => {
-    if (myPeer && myPeer.on && myStream) {
+    if (myPeer && myPeer.on && myStream && socket) {
       socket.on("load-connected-users", ({ connections }) => {
         setConnectedUsers(connections);
       });
@@ -75,18 +77,13 @@ export const Room = function ({ roomId }) {
       myPeer.on("call", (call) => {
         answerCall(call);
       });
+      setTimeout(() => {
+        setLoading(false);
+      }, 3500);
     }
 
     window.setDebugOptions = setDebugOptions;
-  }, [myPeer, myStream]);
-
-  useEffect(() => {
-    console.log("my peers changed.....", peers);
-  }, [peers]);
-
-  useEffect(() => {
-    console.log("other streams changed", otherUserStreams);
-  }, [otherUserStreams]);
+  }, [socket, myPeer, myStream]);
 
   /** Runs when you mute / hide video and vice versa */
   const reconnectToPeers = (userId, passedStream) => {
@@ -103,9 +100,10 @@ export const Room = function ({ roomId }) {
     const activeIndex = doesStreamExist(userId);
     const call = myPeer.call(userId, passedStream);
     call.on("stream", (userVideoStream) => {
-      let streamClone = [...otherUserStreams];
-      streamClone[activeIndex] = userVideoStream;
-      setOtherStreams(streamClone);
+      setOtherStreams((streams) => {
+        streams[activeIndex] = userVideoStream;
+        return [...streams];
+      });
     });
   };
 
@@ -157,6 +155,7 @@ export const Room = function ({ roomId }) {
   /** Answer call when user calls you */
   const answerCall = (callInstance) => {
     console.log("someone is calling", callInstance.peer);
+    console.log("is my stream ready?", myStream);
     callInstance.answer(myStream);
     callInstance.on("stream", (userVideoStream) => {
       console.log("recieved a stream", userVideoStream);
@@ -176,14 +175,15 @@ export const Room = function ({ roomId }) {
   const disconnectUser = (userId) => {
     peers[userId] && peers[userId].close();
     console.log(`User ${userId} disconnected`);
-    let filteredStreams = otherUserStreams.filter((stream) => {
-      let id = Object.keys(stream)[0];
 
-      if (id !== userId) {
-        return stream;
-      }
+    setOtherStreams((currentStreams) => {
+      return currentStreams.filter((stream) => {
+        let id = Object.keys(stream)[0];
+        if (id !== userId) {
+          return stream;
+        }
+      });
     });
-    setOtherStreams(filteredStreams);
   };
 
   const reactivateStream = () => {
@@ -206,61 +206,71 @@ export const Room = function ({ roomId }) {
     });
   };
 
-  return (
-    <Layout>
-      {debugOptionsActivated && (
-        <Paper className={classes.cp}>
-          <Typography variant="h2">Debug Info</Typography>
-          <div>roomId: {roomId}</div>
-          <div>
-            connectedUsers: <pre>{JSON.stringify(connectedUsers, null, 2)}</pre>
-          </div>
-        </Paper>
-      )}
-
-      <Grid container spacing={3}>
-        {!otherUserStreams.length ? (
-          <Grid item xs={12}>
-            <Alone />
-          </Grid>
-        ) : (
-          otherUserStreams.map((stream, i) => {
-            const id = Object.keys(stream)[0];
-            const filtered = connectedUsers.filter(
-              (user) => user.peerId == id
-            )[0];
-            return (
-              <Grid key={`grid-${i}`} item xs={12} md={6} zeroMinWidth>
-                <Card key={`card-${i}`} raised>
-                  <Video
-                    socket={socket}
-                    isSelf={false}
-                    roomId={roomId}
-                    stream={stream[id]}
-                    myKey={`video-${i}`}
-                    audioState={filtered?.properties?.audioState}
-                    videoState={filtered?.properties?.videoState}
-                  />
-                </Card>
-              </Grid>
-            );
-          })
+  useEffect(() => {
+    console.info(`Room ${roomId} is loading: ${loading}`);
+  }, [loading]);
+  return loading ? (
+    <>
+      <Dialog title={`Loading`}></Dialog>
+    </>
+  ) : (
+    <>
+      <Layout>
+        {debugOptionsActivated && (
+          <Paper className={classes.cp}>
+            <Typography variant="h2">Debug Info</Typography>
+            <div>roomId: {roomId}</div>
+            <div>
+              connectedUsers:{" "}
+              <pre>{JSON.stringify(connectedUsers, null, 2)}</pre>
+            </div>
+          </Paper>
         )}
 
-        <Grid item xs={12} md={6} zeroMinWidth>
-          <Card raised className={classes.videoSelf}>
-            <Video
-              socket={socket}
-              isSelf={true}
-              roomId={roomId}
-              stream={myStream}
-              reactivateStream={reactivateStream}
-              muteMe={muteMe}
-            />
-          </Card>
+        <Grid container spacing={3}>
+          {!otherUserStreams.length ? (
+            <Grid item xs={12}>
+              <Alone />
+            </Grid>
+          ) : (
+            otherUserStreams.map((stream, i) => {
+              const id = Object.keys(stream)[0];
+              const filtered = connectedUsers.filter(
+                (user) => user.peerId == id
+              )[0];
+              return (
+                <Grid key={`grid-${i}`} item xs={12} md={6} zeroMinWidth>
+                  <Card key={`card-${i}`} raised>
+                    <Video
+                      socket={socket}
+                      isSelf={false}
+                      roomId={roomId}
+                      stream={stream[id]}
+                      myKey={`video-${i}`}
+                      audioState={filtered?.properties?.audioState}
+                      videoState={filtered?.properties?.videoState}
+                    />
+                  </Card>
+                </Grid>
+              );
+            })
+          )}
+
+          <Grid item xs={12} md={6} zeroMinWidth>
+            <Card raised className={classes.videoSelf}>
+              <Video
+                socket={socket}
+                isSelf={true}
+                roomId={roomId}
+                stream={myStream}
+                reactivateStream={reactivateStream}
+                muteMe={muteMe}
+              />
+            </Card>
+          </Grid>
         </Grid>
-      </Grid>
-    </Layout>
+      </Layout>
+    </>
   );
 };
 export default Room;
