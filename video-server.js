@@ -19,6 +19,7 @@ let connections = {};
 
 // Handle connection
 io.on("connect", function (socket) {
+  console.log("someone connected");
   socket.on("join-room", (roomId, userId) => {
     //room doesn't  exist, lets create it and store the initial user
     if (!connections[roomId]) {
@@ -58,6 +59,7 @@ io.on("connect", function (socket) {
     });
     // send the updated room list to everyone in the room, including the sender
     // https://socket.io/docs/v3/emit-cheatsheet/
+    console.log("emitting connected users", connections[roomId]);
     io.in(roomId).emit("load-connected-users", {
       connections: connections[roomId],
     });

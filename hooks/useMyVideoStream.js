@@ -30,17 +30,22 @@ export const useMyVideoStream = () => {
       setAudioEnabled(false);
       setVideoEnabled(false);
       setIsError(true);
-      setErrorStack(e);
-      console.log(e);
+      setErrorStack(e.toString());
     }
     setAudioEnabled(audio);
     setVideoEnabled(video);
     setMyVideoStream(stream);
+    console.log("stream activated", stream);
     return stream;
   };
 
-  const disableVideo = () => {
-    return reactivateStream(true, false);
+  const disableVideo = async () => {
+    try {
+      await reactivateStream(true, false);
+      return Promise.resolve();
+    } catch (e) {
+      return Promise.reject(e);
+    }
   };
 
   const reactivateStream = () => {
@@ -62,5 +67,7 @@ export const useMyVideoStream = () => {
     disableVideo,
     audioEnabled,
     videoEnabled,
+    isError,
+    errorStack,
   ];
 };

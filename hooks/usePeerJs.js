@@ -7,20 +7,29 @@ async function loadPeerPromise() {
 // Load peer library and make peer
 export const usePeerjs = (peerConfig) => {
   const [peer, setPeer] = useState(null);
+  const [error, setError] = useState(null);
+  const [wasPeerOpened, setWasOpened] = useState(false);
+
+  const initializePeerJs = async () => {
+    const Peer = await loadPeerPromise();
+    return new Peer(undefined, { ...peerConfig });
+  };
+
   useEffect(() => {
-    loadPeerPromise().then((Peer) => {
-      const peer = new Peer(undefined, {
-        ...peerConfig,
-      });
-      // console.log(peer._disconnected, peer);
-      // if (!peer._disconnected) {
-      //   setPeer(null);
-      //   console.warn("peerjs can't initiate a connection");
-      // } else {
-      setPeer(peer);
-      //}
+    initializePeerJs().then((myPeer) => {
+      console.log("peer initialized");
+      setPeer(myPeer);
+      myPeer.connect("");
     });
   }, []);
 
-  return [peer];
+  useEffect(() => {
+    if (peer?._disconnected) {
+      setPeer(null);
+      console.warn("Couldn't connect to peerJS server");
+      setError("Couldn't connect to peerJs server");
+    }
+  }, [peer]);
+
+  return [peer, error, setWasOpened, wasPeerOpened];
 };

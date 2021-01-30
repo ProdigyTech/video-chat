@@ -21,17 +21,12 @@ export default function Video({
   socket,
   audioState: socketAudioState = "unmuted",
   videoState: socketVideoState = "playing",
-  reactivateStream,
-  muteMe,
 }) {
-  const [audioState, setAudioState] = useState(socketAudioState); //unmuted or muted
-  const [videoState, setVideoState] = useState(socketVideoState); //playing or paused
-
   const videoRef = useRef();
   const classes = useStyles();
 
   useEffect(() => {
-    if (stream) {
+    if (stream && socketVideoState) {
       videoRef.current.srcObject = stream;
 
       socketVideoState == "playing"
@@ -46,78 +41,109 @@ export default function Video({
         videoRef.current.muted = true;
       }
     }
-  }, [stream, socketAudioState, socketVideoState]);
+  }, [stream]);
 
-  const pauseOrResumeVideo = () => {
-    if (videoRef) {
-      if (videoState == "playing") {
-        videoRef.current.pause();
-        setVideoState("paused");
-        turnOffStream();
-        socket.emit("video-state-change", "paused");
-      } else {
-        videoRef.current.play();
-        reactivateStream();
-        setVideoState("playing");
-        socket.emit("video-state-change", "playing");
-      }
+  const pauseVideo = () => {
+    if (videoRef && socketVideoState == "playing") {
+      turnOffStream();
+      socket.emit("video-state-change", "paused");
     }
   };
 
-  // need to look into.
+  const resumeVideo = () => {
+    if (videoRef && socketVideoState == "paused") {
+      socket.emit("video-state-change", "playing");
+      turnOnStream();
+    }
+  };
+
+  const muteVideo = () => {
+    if (socketAudioState == "unmuted") {
+      const localStream = videoRef.current.srcObject;
+      const tracks = localStream.getAudioTracks();
+      console.log(tracks);
+      tracks.forEach((track) => {
+        track.enabled = false;
+      });
+    }
+  };
+
+  const unMuteVideo = () => {
+    if (socketAudioState == "muted") {
+      const localStream = videoRef.current.srcObject;
+      const tracks = localStream.getAudioTracks();
+      tracks.forEach((track) => {
+        track.enabled = true;
+      });
+    }
+  };
+
+  const mute = () => {
+    socket.emit("audio-state-change", "muted");
+    muteVideo();
+  };
+
+  const unMute = () => {
+    socket.emit("audio-state-change", "unmuted");
+    unMuteVideo();
+  };
+
+  const turnOnStream = () => {
+    const localStream = videoRef.current.srcObject;
+    const tracks = localStream.getVideoTracks();
+    tracks.forEach((track) => (track.enabled = true));
+  };
+
   const turnOffStream = () => {
     const localStream = videoRef.current.srcObject;
-    const tracks = localStream.getTracks();
-
-    tracks.forEach((track) => {
-      track.stop();
-    });
-
-    videoRef.current.srcObject = null;
-  };
-
-  const muteOrUnmuteAudio = () => {
-    if (videoRef) {
-      if (audioState == "unmuted") {
-        setAudioState("muted");
-        socket.emit("audio-state-change", "muted");
-        muteMe();
-      } else {
-        setAudioState("unmuted");
-        reactivateStream();
-        socket.emit("audio-state-change", "unmuted");
-      }
-    }
-  };
-
-  const getVideoIcon = () => {
-    return videoState == "playing" ? faPauseCircle : faPlayCircle;
-  };
-
-  const getAudioIcon = () => {
-    return audioState == "unmuted" ? faVolumeMute : faVolumeUp;
+    const tracks = localStream.getVideoTracks();
+    tracks.forEach((track) => (track.enabled = false));
   };
 
   return (
-    <Grid
-      container
-      alignItems="center"
-      justify="center"
-      key={myKey}
-      direction="row"
-    >
-      <Grid item xs={12}>
-        <video ref={videoRef} className={classes.video}></video>
-      </Grid>
-      {isSelf && (
+    <>
+      <Grid
+        container
+        alignItems="center"
+        justify="center"
+        key={myKey}
+        direction="row"
+      >
         <Grid item xs={12}>
-          <FontAwesomeIcon icon={getVideoIcon()} onClick={pauseOrResumeVideo} />
-          <FontAwesomeIcon icon={getAudioIcon()} onClick={muteOrUnmuteAudio} />
+          <video ref={videoRef} className={classes.video}></video>
         </Grid>
-      )}
-      Audio: {audioState}
-      <br />
-      Video: {videoState}
-    </Grid>
+        {isSelf && (
+          <div className={`video--controls`}>
+            <FontAwesomeIcon
+              icon={faPauseCircle}
+              onClick={pauseVideo}
+              title={`Pause your video`}
+              class={socketVideoState == "paused" ? "selected" : ""}
+            />
+            <FontAwesomeIcon
+              icon={faPlayCircle}
+              onClick={resumeVideo}
+              title={`Resumee Video`}
+              class={socketVideoState == "playing" ? "selected" : ""}
+            />
+            <FontAwesomeIcon
+              icon={faVolumeMute}
+              onClick={mute}
+              title={`Mute your video`}
+              class={socketAudioState == "muted" ? "selected" : ""}
+            />
+            <FontAwesomeIcon
+              icon={faVolumeUp}
+              onClick={unMute}
+              title={`Unmute your video`}
+              class={socketAudioState == "unmuted" ? "selected" : ""}
+            />
+          </div>
+        )}
+        Audio: {socketAudioState}
+        <br />
+        Video: {socketVideoState}
+      </Grid>
+    </>
   );
 }

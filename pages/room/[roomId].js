@@ -12,11 +12,12 @@ import { Alone } from "components/Alone";
 import { Layout } from "@/Util/Layout";
 import { Dialog } from "components";
 import { usePeerjs, useSocketIo, useMyVideoStream } from "hooks/";
+import { useRouter } from "next/router";
+
+import { Chat } from "components/Chat";
 
 const useStyles = makeStyles((theme) => ({
   videoSelf: {
-    // marginBottom: "5em",
-    // marginLeft: "4em",
     border: "1px solid green",
   },
   cp: {
@@ -30,8 +31,9 @@ export async function getServerSideProps(context) {
 }
 
 export const Room = function ({ roomId }) {
+  const router = useRouter();
   const [connectedUsers, setConnectedUsers] = useState([]);
-  const [myPeer] = usePeerjs({
+  const [myPeer, error, setWasPeerOpened, wasPeerOpened] = usePeerjs({
     host: "peerjs.prodigytech.us",
     secure: true,
     path: "/",
@@ -41,6 +43,10 @@ export const Room = function ({ roomId }) {
     activateStream,
     muteMyVideo,
     disableVideo,
+    audioEnabled,
+    videoEnabled,
+    isVideoError,
+    videoStreamErrorStack,
   ] = useMyVideoStream();
   const [socket] = useSocketIo();
   const [myId, setMyId] = useState(null);
@@ -48,11 +54,34 @@ export const Room = function ({ roomId }) {
   const [loading, setLoading] = useState(true);
   const [peers, setMyPeers] = useState([]);
   const [debugOptionsActivated, setDebugOptions] = useState(false);
-
+  const [errors, setErrors] = useState([]);
   const classes = useStyles();
+  const [shouldRefresh, setRefresh] = useState(false);
+  const [isChatEnabled, setChatEnabled] = useState(false);
 
   useEffect(() => {
-    if (myPeer && myPeer.on && myStream && socket) {
+    if (navigator.userAgent.includes("Chrome")) {
+    } else if (navigator.userAgent.includes("Safari")) {
+      setErrors([
+        `Your browser isn't supported at this time: ${navigator.userAgent}`,
+      ]);
+    }
+  }, []);
+  useEffect(() => {
+    if (videoStreamErrorStack) {
+      setErrors((errors) => [...errors, videoStreamErrorStack]);
+    }
+
+    if (error) {
+      setErrors((errors) => {
+        if (!errors.includes(error)) {
+          return [...errors, error];
+        } else {
+          return [...errors];
+        }
+      });
+    }
+    if (myPeer?.on && myStream && socket) {
       socket.on("load-connected-users", ({ connections }) => {
         setConnectedUsers(connections);
       });
@@ -61,7 +90,6 @@ export const Room = function ({ roomId }) {
         console.log(
           `User connected, ${userId}, attempting to connect to video feed`
         );
-        console.log(otherUserStreams);
         callPeer(userId, myStream);
       });
 
@@ -70,6 +98,7 @@ export const Room = function ({ roomId }) {
       });
       // Set up peer open handler
       myPeer.on("open", (id) => {
+        setRefresh(false);
         socket.emit("join-room", roomId, id);
         setMyId(id);
       });
@@ -77,12 +106,22 @@ export const Room = function ({ roomId }) {
       myPeer.on("call", (call) => {
         answerCall(call);
       });
+
+      setLoading(false);
+      window.peer = myPeer;
+
       setTimeout(() => {
-        setLoading(false);
-      }, 3500);
+        if (!myPeer.open) {
+          setErrors(["Cant connect to peerJS, re-initiating connection"]);
+          setTimeout(() => {
+            !myPeer.open && router.reload();
+          }, 2000);
+        }
+      }, [4000]);
     }
 
     window.setDebugOptions = setDebugOptions;
+    window.setChat = setChatEnabled;
   }, [socket, myPeer, myStream]);
 
   /** Runs when you mute / hide video and vice versa */
@@ -99,7 +138,14 @@ export const Room = function ({ roomId }) {
     };
     const activeIndex = doesStreamExist(userId);
     const call = myPeer.call(userId, passedStream);
+
+    call.on("call", (call) => {
+      console.log("callinggg");
+      answerCall(call);
+    });
+
     call.on("stream", (userVideoStream) => {
+      console.log("got a stream");
       setOtherStreams((streams) => {
         streams[activeIndex] = userVideoStream;
         return [...streams];
@@ -186,32 +232,20 @@ export const Room = function ({ roomId }) {
     });
   };
 
-  const reactivateStream = () => {
-    activateStream().then((stream) => {
-      connectedUsers.forEach((user) => {
-        if (user.peerId !== myId) {
-          reconnectToPeers(user.peerId, stream);
-        }
-      });
-    });
-  };
-
-  const muteMe = () => {
-    muteMyVideo().then((stream) => {
-      connectedUsers.forEach((user) => {
-        if (user.peerId !== myId) {
-          reconnectToPeers(user.peerId, stream);
-        }
-      });
-    });
-  };
+  useEffect(() => {
+    console.log("connected users", connectedUsers, otherUserStreams);
+  }, [connectedUsers]);
 
   useEffect(() => {
     console.info(`Room ${roomId} is loading: ${loading}`);
-  }, [loading]);
-  return loading ? (
+  }, [loading, errors]);
+  return loading || errors.length > 0 ? (
     <>
-      <Dialog title={`Loading`}></Dialog>
+      <Dialog title={errors.length > 0 ? "Error!" : `Loading`}>
+        {errors.map((error, i) => {
+          return <Typography key={i}>{error}</Typography>;
+        })}
+      </Dialog>
     </>
   ) : (
     <>
@@ -263,12 +297,19 @@ export const Room = function ({ roomId }) {
                 isSelf={true}
                 roomId={roomId}
                 stream={myStream}
-                reactivateStream={reactivateStream}
-                muteMe={muteMe}
+                audioState={
+                  connectedUsers.filter((user) => user.peerId == myId)[0]
+                    ?.properties.audioState
+                }
+                videoState={
+                  connectedUsers.filter((user) => user.peerId == myId)[0]
+                    ?.properties.videoState
+                }
               />
             </Card>
           </Grid>
         </Grid>
+        {isChatEnabled && <Chat socket={socket} />}
       </Layout>
     </>
   );
