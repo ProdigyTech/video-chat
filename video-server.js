@@ -16,6 +16,7 @@ const ports = {
 const port = ports[process.env.NODE_ENV] || ports["dev"];
 
 let connections = {};
+let messages = {};
 
 // Handle connection
 io.on("connect", function (socket) {
@@ -33,6 +34,7 @@ io.on("connect", function (socket) {
           },
         },
       ];
+      messages[roomId] = [];
     } else {
       const currentConnections = connections[roomId];
       //can i do an append?????
@@ -57,6 +59,18 @@ io.on("connect", function (socket) {
     socket.to(roomId).broadcast.emit("user-connected", {
       userId,
     });
+
+    let timeNow = new Date(Date.now());
+    let joinedMessage = {
+      message: `${userId} has joined the room`,
+      timestamp: `${timeNow.getHours()}:${timeNow.getMinutes()}`,
+      unixTimestamp: timeNow,
+      to: "",
+      from: userId,
+    };
+    messages[roomId].push(joinedMessage);
+    socket.to(roomId).broadcast.emit("receive-message-client", joinedMessage);
+
     // send the updated room list to everyone in the room, including the sender
     // https://socket.io/docs/v3/emit-cheatsheet/
     console.log("emitting connected users", connections[roomId]);
@@ -112,6 +126,20 @@ io.on("connect", function (socket) {
       });
     });
 
+    socket.on("send-message-server", (message) => {
+      console.log("message recieved", message);
+
+      let currentTime = new Date(Date.now());
+      let messageObj = {
+        message: message,
+        from: socket.id,
+        timestamp: `${currentTime.getHours()}:${currentTime.getMinutes()}`,
+        unixTimestamp: currentTime,
+      };
+      messages[roomId].push(messageObj);
+
+      io.in(roomId).emit("receive-message-client", messageObj);
+    });
     /// capture the disconnect event, filter out user, reload user list for the room
     socket.on("disconnect", function () {
       connections[roomId] = connections[roomId].filter((conn) => {

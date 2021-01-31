@@ -8,7 +8,7 @@ import {
 } from "@material-ui/core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy } from "@fortawesome/free-solid-svg-icons";
-import Input from "components/Input";
+import { Input } from "components/Input";
 import { useEffect, useRef, useState } from "react";
 
 const useStyles = makeStyles((theme) => ({

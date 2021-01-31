@@ -10,12 +10,12 @@ import Video from "components/Video";
 import { useEffect, useState } from "react";
 import { Alone } from "components/Alone";
 import { Layout } from "@/Util/Layout";
-import { Dialog } from "components";
+import { Dialog, Chat } from "components";
 import { usePeerjs, useSocketIo, useMyVideoStream } from "hooks/";
 import { useRouter } from "next/router";
 
-import { Chat } from "components/Chat";
-
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faComments } from "@fortawesome/free-solid-svg-icons";
 const useStyles = makeStyles((theme) => ({
   videoSelf: {
     border: "1px solid green",
@@ -57,8 +57,8 @@ export const Room = function ({ roomId }) {
   const [errors, setErrors] = useState([]);
   const classes = useStyles();
   const [shouldRefresh, setRefresh] = useState(false);
-  const [isChatEnabled, setChatEnabled] = useState(false);
-
+  const [showChat, setShowChat] = useState(false);
+  const [isNewMessage, setNewMessage] = useState(false);
   useEffect(() => {
     if (navigator.userAgent.includes("Chrome")) {
     } else if (navigator.userAgent.includes("Safari")) {
@@ -121,7 +121,6 @@ export const Room = function ({ roomId }) {
     }
 
     window.setDebugOptions = setDebugOptions;
-    window.setChat = setChatEnabled;
   }, [socket, myPeer, myStream]);
 
   /** Runs when you mute / hide video and vice versa */
@@ -237,6 +236,12 @@ export const Room = function ({ roomId }) {
   }, [connectedUsers]);
 
   useEffect(() => {
+    if (!showChat) {
+      setNewMessage(false);
+    }
+  }, [showChat]);
+
+  useEffect(() => {
     console.info(`Room ${roomId} is loading: ${loading}`);
   }, [loading, errors]);
   return loading || errors.length > 0 ? (
@@ -262,6 +267,11 @@ export const Room = function ({ roomId }) {
         )}
 
         <Grid container spacing={3}>
+          <FontAwesomeIcon
+            icon={faComments}
+            onClick={() => setShowChat(true)}
+            className={isNewMessage && !showChat ? "unread-message" : ""}
+          />
           {!otherUserStreams.length ? (
             <Grid item xs={12}>
               <Alone />
@@ -309,7 +319,13 @@ export const Room = function ({ roomId }) {
             </Card>
           </Grid>
         </Grid>
-        {isChatEnabled && <Chat socket={socket} />}
+
+        <Chat
+          socket={socket}
+          setShowChat={setShowChat}
+          isOpen={showChat}
+          setNewMessage={setNewMessage}
+        />
       </Layout>
     </>
   );

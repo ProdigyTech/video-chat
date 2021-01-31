@@ -118,25 +118,25 @@ export default function Video({
               icon={faPauseCircle}
               onClick={pauseVideo}
               title={`Pause your video`}
-              class={socketVideoState == "paused" ? "selected" : ""}
+              className={socketVideoState == "paused" ? "selected" : ""}
             />
             <FontAwesomeIcon
               icon={faPlayCircle}
               onClick={resumeVideo}
               title={`Resumee Video`}
-              class={socketVideoState == "playing" ? "selected" : ""}
+              className={socketVideoState == "playing" ? "selected" : ""}
             />
             <FontAwesomeIcon
               icon={faVolumeMute}
               onClick={mute}
               title={`Mute your video`}
-              class={socketAudioState == "muted" ? "selected" : ""}
+              className={socketAudioState == "muted" ? "selected" : ""}
             />
             <FontAwesomeIcon
               icon={faVolumeUp}
               onClick={unMute}
               title={`Unmute your video`}
-              class={socketAudioState == "unmuted" ? "selected" : ""}
+              className={socketAudioState == "unmuted" ? "selected" : ""}
             />
           </div>
         )}
