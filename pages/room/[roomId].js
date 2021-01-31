@@ -5,6 +5,7 @@ import {
   makeStyles,
   Card,
   Typography,
+  deprecatedPropType,
 } from "@material-ui/core";
 import Video from "components/Video";
 import { useEffect, useState } from "react";
@@ -97,15 +98,8 @@ export const Room = function ({ roomId }) {
         disconnectUser(userId);
       });
       // Set up peer open handler
-      myPeer.on("open", (id) => {
-        setRefresh(false);
-        socket.emit("join-room", roomId, id);
-        setMyId(id);
-      });
 
-      myPeer.on("call", (call) => {
-        answerCall(call);
-      });
+      console.log(myPeer);
 
       setLoading(false);
       window.peer = myPeer;
@@ -118,12 +112,32 @@ export const Room = function ({ roomId }) {
           }, 2000);
         }
       }, [4000]);
+
+      debugger;
+    } else {
+      console.log("wwhat the fuck");
+      debugger;
     }
 
     window.setDebugOptions = setDebugOptions;
   }, [socket, myPeer, myStream]);
 
+  myPeer?.on("open", (id) => {
+    setRefresh(false);
+    socket.emit("join-room", roomId, id);
+    setMyId(id);
+  });
+
+  myPeer?.on("call", (call) => {
+    answerCall(call);
+  });
+
   /** Runs when you mute / hide video and vice versa */
+  /**
+   *
+   * @deprecated
+   *
+   */
   const reconnectToPeers = (userId, passedStream) => {
     const doesStreamExist = (userId) => {
       let activeIndex;
