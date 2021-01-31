@@ -5,6 +5,7 @@ const next = require("next");
 const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev });
 const nextHandler = nextApp.getRequestHandler();
+const uuidv = require("uuid").v4;
 
 console.log("ENV: ", process.env.NODE_ENV);
 
@@ -67,6 +68,8 @@ io.on("connect", function (socket) {
       unixTimestamp: timeNow,
       to: "",
       from: userId,
+      id: uuidv(),
+      recalled: false,
     };
     messages[roomId].push(joinedMessage);
     socket.to(roomId).broadcast.emit("receive-message-client", joinedMessage);
@@ -131,14 +134,34 @@ io.on("connect", function (socket) {
 
       let currentTime = new Date(Date.now());
       let messageObj = {
+        id: uuidv(),
         message: message,
         from: socket.id,
         timestamp: `${currentTime.getHours()}:${currentTime.getMinutes()}`,
         unixTimestamp: currentTime,
+        recalled: false,
       };
       messages[roomId].push(messageObj);
 
       io.in(roomId).emit("receive-message-client", messageObj);
+    });
+
+    /**
+     *  Maybe keep the message, add recalled attribute to it. if recalled, don't show in client?
+     */
+    socket.on("recall-message", (id) => {
+      messages[roomId] = messages[roomId].map((messageData) => {
+        if (messageData.id == id) {
+          return {
+            ...messageData,
+            recalled: true,
+          };
+        } else {
+          return messageData;
+        }
+      });
+
+      io.in(roomId).emit("recall-success", messages[roomId]);
     });
     /// capture the disconnect event, filter out user, reload user list for the room
     socket.on("disconnect", function () {

@@ -135,3 +135,17 @@
 .unread-message {
   color: red;
 }
+
+.recall--message {
+  margin-top: 0.5em;
+  font-weight: bolder;
+  &:hover {
+    font-weight: bolder;
+    cursor: pointer;
+    color: red;
+    margin-top: 0.5em;
+  }
+}
+.inline--image {
+  width: 100%;
+}
