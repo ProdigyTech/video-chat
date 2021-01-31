@@ -163,6 +163,15 @@ io.on("connect", function (socket) {
 
       io.in(roomId).emit("recall-success", messages[roomId]);
     });
+
+    socket.on("chat-typing-notification-start", (id) => {
+      io.in(roomId).emit("chat-typing-notification-start", id);
+    });
+
+    socket.on("chat-typing-notification-end", (id) => {
+      io.in(roomId).emit("chat-typing-notification-end");
+    });
+
     /// capture the disconnect event, filter out user, reload user list for the room
     socket.on("disconnect", function () {
       connections[roomId] = connections[roomId].filter((conn) => {

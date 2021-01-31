@@ -4,13 +4,16 @@ import { Button } from "components";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimesCircle, faUndo } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "./Dialog";
-import { stringify } from "uuid";
+import Typing from "react-typing-animation";
+
 export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
   const [chatLogs, setChatLogs] = useState([]);
-
   const [messageBox, setMessageBox] = useState("");
-
   const extensionsValidToRender = ["jpg", "jpeg", "png", "gif"];
+  const [showTypingNotification, setTypingNotification] = useState(null);
+
+  let timer,
+    timeoutVal = 1000; // time it takes to wait for user to stop typing in ms
 
   const inputRef = useRef(null);
   const messageEndRef = useRef(null);
@@ -67,6 +70,14 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
     socket.on("recall-success", (messages) => {
       setChatLogs(messages);
     });
+
+    socket.on("chat-typing-notification-start", (id) => {
+      setTypingNotification({ isTyping: true, userTypingId: id });
+    });
+
+    socket.on("chat-typing-notification-end", () => {
+      setTypingNotification(null);
+    });
   }, [socket]);
 
   const sendMessage = () => {
@@ -116,6 +127,24 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
     }
   }, [chatLogs]);
 
+  const handleKeyUp = (e) => {
+    if (window) {
+      window.clearTimeout(timer); // prevent errant multiple timeouts from being generated
+      timer = window.setTimeout(() => {
+        socket.emit("chat-typing-notification-end");
+      }, timeoutVal);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    window.clearTimeout(timer);
+    if (!showTypingNotification) {
+      socket.emit("chat-typing-notification-start", socket.id);
+      setTypingNotification({ isTyping: true, userTypingId: socket.id });
+      console.log("typing....");
+    }
+  };
+
   return (
     <Dialog
       open={isOpen}
@@ -158,7 +187,13 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
               );
             }
           )}
-          <div className={`test`} ref={messageEndRef} />
+          <div ref={messageEndRef}></div>
+          {showTypingNotification &&
+            showTypingNotification.userTypingId !== socket.id && (
+              <div className={`typing-notification`}>
+                {socket.id} is writing a message...
+              </div>
+            )}
         </div>
         <div className="input--field">
           <Input
@@ -170,6 +205,8 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
             onKeyDown={({ code }) => {
               code == "Enter" && sendMessage();
             }}
+            onKeyUp={handleKeyUp}
+            onKeyPress={handleKeyPress}
           ></Input>
           <Button
             fullWidth={true}

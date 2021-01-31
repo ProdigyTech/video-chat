@@ -149,3 +149,24 @@
 .inline--image {
   width: 100%;
 }
+.typing-notification {
+  animation: pulse 3s ease-out;
+  animation-iteration-count: infinite;
+  opacity: 1;
+  width: 100%;
+  margin-bottom: 1em;
+}
+
+@keyframes pulse {
+  0% {
+    color: rgb(0, 0, 0);
+  }
+  30% {
+    color: rgb(255, 255, 255);
+  }
+  90% {
+  }
+  110% {
+    color: darkgrey;
+  }
+}
