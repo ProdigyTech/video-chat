@@ -78,6 +78,22 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
     socket.on("chat-typing-notification-end", () => {
       setTypingNotification(null);
     });
+
+    socket.on("user-disconnected", (userId) => {
+      let timeNow = new Date(Date.now());
+      setChatLogs((chat) => [
+        ...chat,
+        {
+          message: `User ${userId} disconnected`,
+          timestamp: `${timeNow.getHours()}:${timeNow.getMinutes()}`,
+          from: userId,
+          id: "disconnect-event",
+          recalled: false,
+          media: null,
+          url: null,
+        },
+      ]);
+    });
   }, [socket]);
 
   const sendMessage = () => {

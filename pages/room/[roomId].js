@@ -5,7 +5,6 @@ import {
   makeStyles,
   Card,
   Typography,
-  deprecatedPropType,
 } from "@material-ui/core";
 import Video from "components/Video";
 import { useEffect, useState } from "react";
@@ -32,13 +31,6 @@ export async function getServerSideProps(context) {
 }
 
 export const Room = function ({ roomId }) {
-  const router = useRouter();
-  const [connectedUsers, setConnectedUsers] = useState([]);
-  const [myPeer, error, setWasPeerOpened, wasPeerOpened] = usePeerjs({
-    host: "peerjs.prodigytech.us",
-    secure: true,
-    path: "/",
-  });
   const [
     myStream,
     activateStream,
@@ -48,8 +40,16 @@ export const Room = function ({ roomId }) {
     videoEnabled,
     isVideoError,
     videoStreamErrorStack,
+    stream,
   ] = useMyVideoStream();
+  const [myPeer, error, setWasPeerOpened, wasPeerOpened] = usePeerjs({
+    host: "peerjs.prodigytech.us",
+    secure: true,
+    path: "/",
+  });
   const [socket] = useSocketIo();
+  const router = useRouter();
+  const [connectedUsers, setConnectedUsers] = useState([]);
   const [myId, setMyId] = useState(null);
   const [otherUserStreams, setOtherStreams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,18 +61,18 @@ export const Room = function ({ roomId }) {
   const [showChat, setShowChat] = useState(false);
   const [isNewMessage, setNewMessage] = useState(false);
   useEffect(() => {
-    if (navigator.userAgent.includes("Chrome")) {
-    } else if (navigator.userAgent.includes("Safari")) {
-      setErrors([
-        `Your browser isn't supported at this time: ${navigator.userAgent}`,
-      ]);
-    }
+    // if (navigator.userAgent.includes("Chrome")) {
+    // } else if (navigator.userAgent.includes("Safari")) {
+    //   setErrors([
+    //     `Your browser isn't supported at this time: ${navigator.userAgent}`,
+    //   ]);
+    // }
   }, []);
+
   useEffect(() => {
     if (videoStreamErrorStack) {
       setErrors((errors) => [...errors, videoStreamErrorStack]);
     }
-
     if (error) {
       setErrors((errors) => {
         if (!errors.includes(error)) {
@@ -83,88 +83,54 @@ export const Room = function ({ roomId }) {
       });
     }
     if (myPeer?.on && myStream && socket) {
-      socket.on("load-connected-users", ({ connections }) => {
-        setConnectedUsers(connections);
+      myPeer?.on("call", (call) => {
+        answerCall(call);
       });
-
-      socket.on("user-connected", ({ userId }) => {
-        console.log(
-          `User connected, ${userId}, attempting to connect to video feed`
-        );
-        callPeer(userId, myStream);
-      });
-
-      socket.on("user-disconnected", (userId) => {
-        disconnectUser(userId);
-      });
-      // Set up peer open handler
-
-      console.log(myPeer);
-
-      setLoading(false);
-      window.peer = myPeer;
-
-      setTimeout(() => {
-        if (!myPeer.open) {
-          setErrors(["Cant connect to peerJS, re-initiating connection"]);
-          setTimeout(() => {
-            !myPeer.open && router.reload();
-          }, 2000);
-        }
-      }, [4000]);
-
-      debugger;
-    } else {
-      console.log("wwhat the fuck");
-      debugger;
     }
 
     window.setDebugOptions = setDebugOptions;
   }, [socket, myPeer, myStream]);
 
-  myPeer?.on("open", (id) => {
-    setRefresh(false);
-    socket.emit("join-room", roomId, id);
-    setMyId(id);
-  });
-
-  myPeer?.on("call", (call) => {
-    answerCall(call);
-  });
-
-  /** Runs when you mute / hide video and vice versa */
-  /**
-   *
-   * @deprecated
-   *
-   */
-  const reconnectToPeers = (userId, passedStream) => {
-    const doesStreamExist = (userId) => {
-      let activeIndex;
-      otherUserStreams.forEach((uStream, i) => {
-        const key = Object.keys(uStream)[0];
-        if (key == userId) {
-          activeIndex = i;
+  useEffect(() => {
+    if (myStream && myPeer?.call) {
+      socket?.on("user-connected", ({ userId }) => {
+        console.log(
+          `User connected, ${userId}, attempting to connect to video feed`
+        );
+        if (myPeer?.call) {
+          callPeer(userId, myStream);
         }
       });
-      return activeIndex;
-    };
-    const activeIndex = doesStreamExist(userId);
-    const call = myPeer.call(userId, passedStream);
+    }
+  }, [myStream, myPeer]);
 
-    call.on("call", (call) => {
-      console.log("callinggg");
-      answerCall(call);
-    });
-
-    call.on("stream", (userVideoStream) => {
-      console.log("got a stream");
-      setOtherStreams((streams) => {
-        streams[activeIndex] = userVideoStream;
-        return [...streams];
+  useEffect(() => {
+    if (myPeer) {
+      myPeer.on("open", (id) => {
+        setRefresh(false);
+        socket.emit("join-room", roomId, id);
+        setMyId(id);
       });
-    });
-  };
+    }
+  }, [myPeer]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on("user-disconnected", (userId) => {
+        disconnectUser(userId);
+      });
+
+      socket.on("load-connected-users", ({ connections }) => {
+        setConnectedUsers(connections);
+      });
+    }
+  }, [socket]);
+
+  useEffect(() => {
+    if (myPeer && socket && myStream && errors.length == 0) {
+      setLoading(false);
+    }
+  }, [myPeer, socket, myStream, errors]);
 
   const checkIfPeerExists = (prevPeers, id) => {
     const exists = prevPeers.some((peer) => {
@@ -184,13 +150,13 @@ export const Room = function ({ roomId }) {
 
   const callPeer = (userId, passedStream) => {
     const call = myPeer.call(userId, passedStream);
+
     call.on("stream", (userVideoStream) => {
       let stream = {
         [userId]: userVideoStream,
       };
       //todo!
       setOtherStreams((prevStreams) => {
-        console.log("previous streams ", prevStreams);
         return !checkIfStreamExists(prevStreams, userId)
           ? [...prevStreams, stream]
           : [...prevStreams];
@@ -213,11 +179,8 @@ export const Room = function ({ roomId }) {
 
   /** Answer call when user calls you */
   const answerCall = (callInstance) => {
-    console.log("someone is calling", callInstance.peer);
-    console.log("is my stream ready?", myStream);
     callInstance.answer(myStream);
     callInstance.on("stream", (userVideoStream) => {
-      console.log("recieved a stream", userVideoStream);
       const callingUserId = callInstance.peer;
       let stream = {
         [callingUserId]: userVideoStream,
@@ -233,7 +196,6 @@ export const Room = function ({ roomId }) {
 
   const disconnectUser = (userId) => {
     peers[userId] && peers[userId].close();
-    console.log(`User ${userId} disconnected`);
 
     setOtherStreams((currentStreams) => {
       return currentStreams.filter((stream) => {

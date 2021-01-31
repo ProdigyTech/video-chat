@@ -18,9 +18,8 @@ export const useMyVideoStream = () => {
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [isError, setIsError] = useState(false);
   const [errorStack, setErrorStack] = useState(null);
-
+  let stream = null;
   const activateStream = async (audio = true, video = true) => {
-    let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: audio,
@@ -69,5 +68,6 @@ export const useMyVideoStream = () => {
     videoEnabled,
     isError,
     errorStack,
+    stream,
   ];
 };
