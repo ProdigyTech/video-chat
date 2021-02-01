@@ -88,6 +88,23 @@ export const Room = function ({ roomId }) {
       });
     }
 
+    /** Answer call when user calls you */
+    const answerCall = (callInstance) => {
+      callInstance.answer(myStream);
+      callInstance.on("stream", (userVideoStream) => {
+        const callingUserId = callInstance.peer;
+        let stream = {
+          [callingUserId]: userVideoStream,
+        };
+
+        setOtherStreams((prevStreams) => {
+          return !checkIfStreamExists(prevStreams, callingUserId)
+            ? [...prevStreams, stream]
+            : [...prevStreams];
+        });
+      });
+    };
+
     window.setDebugOptions = setDebugOptions;
   }, [socket, myPeer, myStream]);
 
@@ -97,11 +114,40 @@ export const Room = function ({ roomId }) {
         console.log(
           `User connected, ${userId}, attempting to connect to video feed`
         );
-        if (myPeer?.call) {
+        if (myPeer.call) {
           callPeer(userId, myStream);
         }
       });
     }
+
+    const callPeer = (userId, passedStream) => {
+      const call = myPeer.call(userId, passedStream);
+
+      call.on("stream", (userVideoStream) => {
+        let stream = {
+          [userId]: userVideoStream,
+        };
+        //todo!
+        setOtherStreams((prevStreams) => {
+          return !checkIfStreamExists(prevStreams, userId)
+            ? [...prevStreams, stream]
+            : [...prevStreams];
+        });
+
+        setMyPeers((prevPeers) => {
+          return checkIfPeerExists(prevPeers, userId)
+            ? [...prevPeers]
+            : [
+                ...prevPeers,
+                ...[
+                  {
+                    [userId]: call,
+                  },
+                ],
+              ];
+        });
+      });
+    };
   }, [myStream, myPeer]);
 
   useEffect(() => {
@@ -146,52 +192,6 @@ export const Room = function ({ roomId }) {
     });
 
     return exists.length > 0;
-  };
-
-  const callPeer = (userId, passedStream) => {
-    const call = myPeer.call(userId, passedStream);
-
-    call.on("stream", (userVideoStream) => {
-      let stream = {
-        [userId]: userVideoStream,
-      };
-      //todo!
-      setOtherStreams((prevStreams) => {
-        return !checkIfStreamExists(prevStreams, userId)
-          ? [...prevStreams, stream]
-          : [...prevStreams];
-      });
-
-      setMyPeers((prevPeers) => {
-        return checkIfPeerExists(prevPeers, userId)
-          ? [...prevPeers]
-          : [
-              ...prevPeers,
-              ...[
-                {
-                  [userId]: call,
-                },
-              ],
-            ];
-      });
-    });
-  };
-
-  /** Answer call when user calls you */
-  const answerCall = (callInstance) => {
-    callInstance.answer(myStream);
-    callInstance.on("stream", (userVideoStream) => {
-      const callingUserId = callInstance.peer;
-      let stream = {
-        [callingUserId]: userVideoStream,
-      };
-
-      setOtherStreams((prevStreams) => {
-        return !checkIfStreamExists(prevStreams, callingUserId)
-          ? [...prevStreams, stream]
-          : [...prevStreams];
-      });
-    });
   };
 
   const disconnectUser = (userId) => {
