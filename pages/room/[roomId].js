@@ -10,12 +10,13 @@ import Video from "components/Video";
 import { useEffect, useState } from "react";
 import { Alone } from "components/Alone";
 import { Layout } from "@/Util/Layout";
-import { Dialog, Chat } from "components";
+import { Dialog, Chat, Settings } from "components";
 import { usePeerjs, useSocketIo, useMyVideoStream } from "hooks/";
 import { useRouter } from "next/router";
-
+import { Input, Button } from "components";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faComments } from "@fortawesome/free-solid-svg-icons";
+import { faComments, faCog } from "@fortawesome/free-solid-svg-icons";
+
 const useStyles = makeStyles((theme) => ({
   videoSelf: {
     border: "1px solid green",
@@ -60,13 +61,15 @@ export const Room = function ({ roomId }) {
   const [shouldRefresh, setRefresh] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [isNewMessage, setNewMessage] = useState(false);
+  const [myNickname, setMyNickname] = useState(null);
+  const [settingsModal, setSettingsModal] = useState(false);
   useEffect(() => {
-    // if (navigator.userAgent.includes("Chrome")) {
-    // } else if (navigator.userAgent.includes("Safari")) {
-    //   setErrors([
-    //     `Your browser isn't supported at this time: ${navigator.userAgent}`,
-    //   ]);
-    // }
+    if (navigator.userAgent.includes("Chrome")) {
+    } else if (navigator.userAgent.includes("Safari")) {
+      setErrors([
+        `Your browser isn't supported at this time: ${navigator.userAgent}`,
+      ]);
+    }
   }, []);
 
   useEffect(() => {
@@ -106,6 +109,7 @@ export const Room = function ({ roomId }) {
     };
 
     window.setDebugOptions = setDebugOptions;
+    window.setSettingsModal = setSettingsModal;
   }, [socket, myPeer, myStream]);
 
   useEffect(() => {
@@ -163,6 +167,7 @@ export const Room = function ({ roomId }) {
   useEffect(() => {
     if (socket) {
       socket.on("user-disconnected", (userId) => {
+        console.log("user disconnected event from server", userId);
         disconnectUser(userId);
       });
 
@@ -207,6 +212,10 @@ export const Room = function ({ roomId }) {
     });
   };
 
+  const saveNickname = () => {
+    socket.emit("update-username", myNickname);
+  };
+
   useEffect(() => {
     console.log("connected users", connectedUsers, otherUserStreams);
   }, [connectedUsers]);
@@ -231,6 +240,21 @@ export const Room = function ({ roomId }) {
   ) : (
     <>
       <Layout>
+        {settingsModal && (
+          <Dialog
+            title={`Settings for: ${roomId}`}
+            action={
+              <Button
+                onClick={() => setSettingsModal(false)}
+                variant={`outlined`}
+              >
+                Close{" "}
+              </Button>
+            }
+          >
+            <Settings roomId={roomId} />
+          </Dialog>
+        )}
         {debugOptionsActivated && (
           <Paper className={classes.cp}>
             <Typography variant="h2">Debug Info</Typography>
@@ -243,10 +267,26 @@ export const Room = function ({ roomId }) {
         )}
 
         <Grid container spacing={3}>
+          <Grid item xs={12}>
+            Set your name:{" "}
+            <Input
+              onChange={(e) => setMyNickname(e.target.value)}
+              value={myNickname}
+            />
+            <Button onClick={saveNickname} variant={`outlined`}>
+              {" "}
+              Save Name!{" "}
+            </Button>
+          </Grid>
           <FontAwesomeIcon
             icon={faComments}
             onClick={() => setShowChat(true)}
             className={isNewMessage && !showChat ? "unread-message" : ""}
+          />
+          <FontAwesomeIcon
+            icon={faCog}
+            onClick={() => setSettingsModal(true)}
+            className="settings-cog"
           />
           {!otherUserStreams.length ? (
             <Grid item xs={12}>
@@ -301,6 +341,8 @@ export const Room = function ({ roomId }) {
           setShowChat={setShowChat}
           isOpen={showChat}
           setNewMessage={setNewMessage}
+          customName={myNickname}
+          connectedUsers={connectedUsers}
         />
       </Layout>
     </>

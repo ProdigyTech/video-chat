@@ -13,9 +13,7 @@ export const useSocketIo = () => {
     }
   };
   useEffect(() => {
-    console.log("socket before method", socket);
     initSocketIo().then((socket) => {
-      console.log("socket after thing: ", socket);
       setSocket(socket);
     });
   }, []);

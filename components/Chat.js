@@ -6,7 +6,15 @@ import { faTimesCircle, faUndo } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "./Dialog";
 import Typing from "react-typing-animation";
 
-export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
+export const Chat = ({
+  socket,
+  myId,
+  setShowChat,
+  isOpen,
+  setNewMessage,
+  customName,
+  connectedUsers,
+}) => {
   const [chatLogs, setChatLogs] = useState([]);
   const [messageBox, setMessageBox] = useState("");
   const extensionsValidToRender = ["jpg", "jpeg", "png", "gif"];
@@ -20,7 +28,7 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
   useEffect(() => {
     socket.on(
       "receive-message-client",
-      ({ message, timestamp, from, id, recalled }) => {
+      ({ message, timestamp, from, id, recalled, customName }) => {
         const urlInMessage = grabUrlFromMessage(message);
 
         if (urlInMessage) {
@@ -37,10 +45,10 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
                   <img className={`inline--image`} src={urlInMessage}></img>
                 ),
                 url: urlInMessage,
+                customName,
               },
             ]);
           } else {
-            console.log("else");
             setChatLogs((chat) => [
               ...chat,
               {
@@ -51,14 +59,14 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
                 recalled,
                 media: false,
                 url: <a href={urlInMessage}>{urlInMessage}</a>,
+                customName,
               },
             ]);
           }
         } else {
-          console.log("no url");
           setChatLogs((chat) => [
             ...chat,
-            { message, timestamp, from, id, recalled },
+            { message, timestamp, from, id, recalled, customName },
           ]);
         }
         if (!isOpen && from != socket.id) {
@@ -104,6 +112,11 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
       setMessageBox("");
       scrollIntoView();
     }
+  };
+
+  const getCustomNameOrId = (id) => {
+    const foundUser = connectedUsers.filter((user) => user.socketId == id);
+    return foundUser[0]?.customName || id;
   };
 
   const chunkSendMessage = () => {
@@ -174,7 +187,19 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
       <div className="chat--wrapper">
         <div className={`messages--wrapper`}>
           {chatLogs.map(
-            ({ message, timestamp, from, id, recalled, media, url }, i) => {
+            (
+              {
+                message,
+                timestamp,
+                from,
+                id,
+                recalled,
+                media,
+                url,
+                customName,
+              },
+              i
+            ) => {
               if (!message || recalled) {
                 return;
               }
@@ -189,8 +214,18 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
 
                   {media}
 
-                  <div className={`timestamp`}>{timestamp}</div>
-                  <div className={`from`}>{from}</div>
+                  <div className={`timestamp`}>
+                    {socket.id == from
+                      ? `Sent at:   ${timestamp}`
+                      : `Recieved:  ${timestamp}`}
+                  </div>
+                  <div className={`from`}>
+                    <b>
+                      {socket.id == from
+                        ? `From: You`
+                        : `From: ${getCustomNameOrId(from)}`}
+                    </b>
+                  </div>
                   {socket.id == from && (
                     <div
                       className="recall--message"
@@ -207,7 +242,8 @@ export const Chat = ({ socket, myId, setShowChat, isOpen, setNewMessage }) => {
           {showTypingNotification &&
             showTypingNotification.userTypingId !== socket.id && (
               <div className={`typing-notification`}>
-                {socket.id} is writing a message...
+                {getCustomNameOrId(showTypingNotification.userTypingId)} is
+                writing a message...
               </div>
             )}
         </div>
