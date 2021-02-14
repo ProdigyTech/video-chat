@@ -9,9 +9,9 @@ import {
 import Video from "components/Video";
 import { useEffect, useState } from "react";
 import { Alone } from "components/Alone";
-import { Layout } from "@/Util/Layout";
+import { Layout } from "util/Layout";
 import { Dialog, Chat, Settings } from "components";
-import { usePeerjs, useSocketIo, useMyVideoStream } from "hooks/";
+import { usePeerjs, useSocketIo, useMyVideoStream } from "hooks";
 import { useRouter } from "next/router";
 import { Input, Button } from "components";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
