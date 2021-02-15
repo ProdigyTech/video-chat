@@ -13,7 +13,6 @@ const next = require("next");
 const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev });
 const nextHandler = nextApp.getRequestHandler();
-const bcrypt = require("bcrypt");
 
 const RoomService = require("./backend/db/RoomService");
 const MessageingLayer = require("./backend/db/MessengingService");
@@ -34,7 +33,6 @@ const ports = {
 
 const port = ports[process.env.NODE_ENV] || ports["dev"];
 
-let connections = {};
 let rooms = {};
 let messages = {};
 
@@ -64,43 +62,21 @@ const generateNewMessageObject = (userId, message) => {
   };
 };
 
-const grabRoomInfo = (roomId) => {
-  const roomInfo = rooms[roomId] || {};
-
-  return ({ isLocked, password } = roomInfo);
+const generateDefaultRoomProperties = (roomId) => {
+  return {
+    isLocked: false,
+    password: null,
+    salt: null,
+    id: roomId,
+  };
 };
 
-const setPassword = async (roomID, password) => {
-  const salt = await bcrypt.genSalt(15);
-  const pass = await bcrypt.hash(password, salt);
-
-  try {
-    rooms[roomID] = {
-      isLocked: true,
-      password: pass,
-      salt: salt,
-    };
-    return true;
-  } catch (e) {
-    return false;
-  }
+const grabRoomInfo = async (roomId) => {
+  return await roomPropertiesService.getRoomInfo(roomId);
 };
 
 const checkPassword = async (roomId, password) => {
-  try {
-    if (rooms[roomId]) {
-      const currentPassword = rooms[roomId].password;
-      const salt = rooms[roomId].salt;
-      const isMatch = (await bcrypt.hash(currentPassword, salt)) == password;
-      return isMatch;
-    } else {
-      //it happenns when a user is trying to get into a room, then the last user leaves rooom. user unable to enter room because the password doesn't exist
-      // When last user leaves the room is cleaned up
-      return true;
-    }
-  } catch (e) {
-    return false;
-  }
+  return await roomPropertiesService.checkPassword(roomId, password);
 };
 
 // Handle connection
@@ -118,6 +94,10 @@ io.on("connect", async function (socket) {
       console.log("creating new room on the server");
       roomService.createChatRoom(roomId);
       roomPropertiesService.createProperties(roomId);
+      roomPropertiesService.insertNewProperties(
+        roomId,
+        generateDefaultRoomProperties(roomId)
+      );
     }
 
     //eventually move this to mongo
@@ -271,8 +251,11 @@ io.on("connect", async function (socket) {
 nextApp.prepare().then(() => {
   app.get("/room_check/:id", async (req, res) => {
     const { id } = req.params;
-    const info = grabRoomInfo(id);
-    return res.send(JSON.stringify({ isLocked: info.isLocked }));
+    const info = await grabRoomInfo(id);
+    if (info.length > 0) {
+      return res.send(JSON.stringify({ isLocked: info[0].isLocked }));
+    }
+    return res.send(JSON.stringify({ isLocked: false }));
   });
 
   app.post("/check_password", async (req, res) => {
@@ -280,10 +263,15 @@ nextApp.prepare().then(() => {
       const password = req.body.password;
       const roomID = req.body.roomID;
 
-      (await checkPassword(roomID, password))
+      const isPasswordValid = await checkPassword(roomID, password);
+
+      console.log("is password valid?", isPasswordValid);
+
+      return isPasswordValid
         ? res.send(JSON.stringify({ success: true }))
         : res.send(JSON.stringify({ success: false }));
     } catch (e) {
+      console.log(e);
       res.status(500);
       res.send(JSON.stringify({ success: false }));
     }
@@ -293,13 +281,10 @@ nextApp.prepare().then(() => {
     try {
       const password = req.body.password;
       const roomID = req.body.roomID;
-
-      const result = await setPassword(roomID, password);
-      console.log(result);
-      result
-        ? res.send(JSON.stringify({ success: true }))
-        : res.send(JSON.stringify({ success: false }));
+      await roomPropertiesService.setPassword(roomID, password);
+      res.send(JSON.stringify({ success: true }));
     } catch (e) {
+      console.log(e);
       res.status(500);
       res.send(JSON.stringify({ success: false }));
     }
