@@ -39,4 +39,4 @@ yarn-error.log*
 # vercel
 .vercel
 
-db/creds.json
+*creds.json
