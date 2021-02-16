@@ -17,12 +17,12 @@ const nextHandler = nextApp.getRequestHandler();
 const RoomService = require("./backend/db/RoomService");
 const MessageingLayer = require("./backend/db/MessengingService");
 const RoomPropertiesService = require("./backend/db/RoomProprtiesService");
-
-const uuidv = require("uuid").v4;
+const UserService = require("./backend/db/UserService");
 
 const roomService = new RoomService();
 const roomPropertiesService = new RoomPropertiesService();
 const messagingLayer = new MessageingLayer();
+const userService = new UserService();
 
 console.log("ENV: ", process.env.NODE_ENV);
 
@@ -32,27 +32,6 @@ const ports = {
 };
 
 const port = ports[process.env.NODE_ENV] || ports["dev"];
-
-const generateNewUserObject = (userId, socketId, isThereAnActiveRoom) => {
-  return {
-    peerId: userId,
-    socketId: socketId,
-    properties: {
-      audioState: "unmuted",
-      videoState: "playing",
-    },
-    isAdmin: !isThereAnActiveRoom ? true : false, //first user in room is admin by default
-  };
-};
-
-const generateDefaultRoomProperties = (roomId) => {
-  return {
-    isLocked: false,
-    password: null,
-    salt: null,
-    id: roomId,
-  };
-};
 
 const grabRoomInfo = async (roomId) => {
   return await roomPropertiesService.getRoomInfo(roomId);
@@ -77,13 +56,13 @@ io.on("connect", async function (socket) {
       roomPropertiesService.createProperties(roomId);
       roomPropertiesService.insertNewProperties(
         roomId,
-        generateDefaultRoomProperties(roomId)
+        roomPropertiesService.generateDefaultRoomProperties(roomId)
       );
       messagingLayer.createMessageStore(roomId);
     }
 
     await roomService.insertUserRecord(
-      generateNewUserObject(userId, socket.id, isThereAnActiveRoom),
+      userService.generateNewUserObject(userId, socket.id, isThereAnActiveRoom),
       roomId
     );
 
@@ -155,18 +134,23 @@ io.on("connect", async function (socket) {
         });
     });
 
-    socket.on("send-message-server", async function (message) {
-      console.log("message recieved", message);
-
+    socket.on("send-message-server", async function ({ message, to }) {
       const dbUserInfo = await roomService.findRecord({ socketId: socket.id });
       const newMessage = messagingLayer.composeNewMessage(
         socket.id,
         message,
         dbUserInfo.customName,
-        socket.handshake.address
+        socket.handshake.address,
+        to[0]
       );
+      console.log(newMessage);
       await messagingLayer.storeMessage(newMessage, roomId);
-      io.in(roomId).emit("receive-message-client", newMessage);
+      if (to.length > 0) {
+        socket.broadcast.to(to[0]).emit("receive-message-client", newMessage);
+        socket.emit("receive-message-client", newMessage);
+      } else {
+        io.in(roomId).emit("receive-message-client", newMessage);
+      }
     });
 
     /**
@@ -208,7 +192,7 @@ io.on("connect", async function (socket) {
           .to(roomId)
           .broadcast.emit("user-disconnected", userToDelete[0].peerId);
       } else {
-        console.log("TODO: Handle cleanup");
+        console.log("clean up");
       }
     });
   });

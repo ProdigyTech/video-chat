@@ -71,5 +71,14 @@ class RoomService extends DatabaseConnection {
       console.log("error checking for room", e);
     }
   }
+
+  generateDefaultRoomProperties(roomId) {
+    return {
+      isLocked: false,
+      password: null,
+      salt: null,
+      id: roomId,
+    };
+  }
 }
 module.exports = RoomService;

@@ -28,6 +28,10 @@ module.exports = {
           bsonType: ["string", "null"],
           description: "must be a string and is not required",
         },
+        to: {
+          bsonType: ["string", "null"],
+          description: "must be a string and is not required",
+        },
       },
     },
   },

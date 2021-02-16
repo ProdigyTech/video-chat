@@ -35,7 +35,7 @@ class MessengingService extends DatabaseConnection {
     }
   }
 
-  composeNewMessage(socketId, message, customName = null, ipAddress) {
+  composeNewMessage(socketId, message, customName = null, ipAddress, to) {
     let currentTime = this.getTimeStamp();
     return {
       id: uuidv(),
@@ -46,6 +46,7 @@ class MessengingService extends DatabaseConnection {
       unixTimestamp: `${currentTime}`,
       recalled: false,
       customName: customName,
+      to: to,
     };
   }
   async storeMessage(messageObj, roomId) {

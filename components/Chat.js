@@ -2,7 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import { Input } from "components";
 import { Button } from "components";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimesCircle, faUndo } from "@fortawesome/free-solid-svg-icons";
+import {
+  faTimesCircle,
+  faUndo,
+  faReply,
+} from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "./Dialog";
 import Typing from "react-typing-animation";
 
@@ -17,8 +21,10 @@ export const Chat = ({
 }) => {
   const [chatLogs, setChatLogs] = useState([]);
   const [messageBox, setMessageBox] = useState("");
+  const [to, setTo] = useState([]);
   const extensionsValidToRender = ["jpg", "jpeg", "png", "gif"];
   const [showTypingNotification, setTypingNotification] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
 
   let timer,
     timeoutVal = 1000; // time it takes to wait for user to stop typing in ms
@@ -28,7 +34,7 @@ export const Chat = ({
   useEffect(() => {
     socket.on(
       "receive-message-client",
-      ({ message, timestamp, from, id, recalled, customName }) => {
+      ({ message, timestamp, from, id, recalled, customName, to }) => {
         const urlInMessage = grabUrlFromMessage(message);
 
         if (urlInMessage) {
@@ -46,6 +52,7 @@ export const Chat = ({
                 ),
                 url: urlInMessage,
                 customName,
+                to,
               },
             ]);
           } else {
@@ -60,13 +67,14 @@ export const Chat = ({
                 media: false,
                 url: <a href={urlInMessage}>{urlInMessage}</a>,
                 customName,
+                to,
               },
             ]);
           }
         } else {
           setChatLogs((chat) => [
             ...chat,
-            { message, timestamp, from, id, recalled, customName },
+            { message, timestamp, from, id, recalled, customName, to },
           ]);
         }
         if (!isOpen && from != socket.id) {
@@ -76,7 +84,10 @@ export const Chat = ({
     );
 
     socket.on("recall-success", (messages) => {
-      setChatLogs(messages);
+      let filteredMessages = messages.filter(
+        (m) => m.to == socket.id || m.from == socket.id || m.to == null
+      );
+      setChatLogs(filteredMessages);
     });
 
     socket.on("load-initial-message-state", (messages) => {
@@ -112,9 +123,10 @@ export const Chat = ({
     if (messageBox.length && messageBox.trim().length) {
       messageBox.length > 200
         ? chunkSendMessage()
-        : socket.emit("send-message-server", messageBox);
+        : socket.emit("send-message-server", { message: messageBox, to: to });
       setMessageBox("");
       scrollIntoView();
+      setTo([]);
     }
   };
 
@@ -170,24 +182,41 @@ export const Chat = ({
   };
 
   const checkUserSuggestions = (target) => {
-    console.log(target.value);
-    let value = target.value;
+    const value = target.value;
 
-    if (value.includes("@")) {
+    if (
+      value.length &&
+      value.includes("@") &&
+      value.match(/@\w+/g) &&
+      to.length == 0
+    ) {
       const userValue = value
         .slice(value.indexOf("@") + 1, value.indexOf(" "))
         .toLowerCase();
 
-      console.log("user value", userValue);
-      // const regex = new RegExp(userValue, "i");
-
       const filteredUsers = connectedUsers.filter((u) => {
-        u.socketId.includes(userValue) || u.customName?.includes(userValue);
-
-        return false;
+        return (
+          u.socketId.includes(userValue) || u.customName?.includes(userValue)
+        );
       });
-      console.log("filtered...", filteredUsers);
+
+      setSuggestions(filteredUsers);
+    } else {
+      setSuggestions([]);
     }
+  };
+
+  const clickedSuggestion = (index) => {
+    const userValues = [messageBox.indexOf("@") + 1, messageBox.indexOf(" ")];
+    if (userValues[1] == -1) {
+      setMessageBox(`@${suggestions[index].socketId} `);
+    } else {
+      let message = messageBox;
+      setMessageBox(message.replace(/@\w+/, `@${suggestions[index].socketId}`));
+    }
+
+    setTo([...new Set([...to, suggestions[index].socketId])]);
+    setSuggestions([]);
   };
 
   const handleKeyPress = (e) => {
@@ -197,6 +226,10 @@ export const Chat = ({
       setTypingNotification({ isTyping: true, userTypingId: socket.id });
       console.log("typing....");
     }
+  };
+  const replyToDm = (from) => {
+    setMessageBox(`@${from}`);
+    setTo([...to, from]);
   };
 
   return (
@@ -222,6 +255,7 @@ export const Chat = ({
                 media,
                 url,
                 customName,
+                to: recipient,
               },
               i
             ) => {
@@ -232,7 +266,7 @@ export const Chat = ({
                 <div
                   className={`message ${
                     socket.id == from ? " from-me" : "from-them"
-                  }`}
+                  } ${recipient === socket.id ? "dm" : ""}`}
                   key={`${from}-${i}`}
                 >
                   {message}
@@ -259,6 +293,19 @@ export const Chat = ({
                       Recall Message <FontAwesomeIcon icon={faUndo} />
                     </div>
                   )}
+                  {recipient === socket.id && (
+                    <>
+                      <br />
+                      <br />
+                      <span className={`dm--notification-msg`}>
+                        {`This is a DM between you and ${from}`}
+                        <FontAwesomeIcon
+                          icon={faReply}
+                          onClick={() => replyToDm(from)}
+                        />
+                      </span>
+                    </>
+                  )}
                 </div>
               );
             }
@@ -278,14 +325,33 @@ export const Chat = ({
             multiline={true}
             ref={inputRef}
             value={messageBox}
-            onChange={({ target }) => setMessageBox(target.value)}
+            onChange={({ target }) => {
+              checkUserSuggestions(target);
+              setMessageBox(target.value);
+            }}
             onKeyDown={({ code, target }) => {
               code == "Enter" && sendMessage();
-              checkUserSuggestions(target);
             }}
             onKeyUp={handleKeyUp}
             onKeyPress={handleKeyPress}
           ></Input>
+          <div
+            className={`suggestion--wrapper ${
+              !suggestions.length ? "hidden" : "show"
+            }`}
+          >
+            {suggestions.map((sug, i) => {
+              return (
+                <div
+                  className={`suggestion--item`}
+                  key={i}
+                  onClick={() => clickedSuggestion(i)}
+                >
+                  {sug.socketId}
+                </div>
+              );
+            })}
+          </div>
           <Button
             fullWidth={true}
             color={`primary`}

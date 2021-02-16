@@ -157,6 +157,15 @@
   margin-bottom: 1em;
 }
 
+.dm {
+  border: 1px dotted red;
+}
+
+.dm--notification-msg {
+  width: 100%;
+  color: red;
+}
+
 @keyframes pulse {
   0% {
     color: rgb(0, 0, 0);
@@ -168,5 +177,25 @@
   }
   110% {
     color: darkgrey;
+  }
+}
+
+.hidden {
+  display: none;
+}
+
+.suggestion--wrapper {
+  max-height: 5em;
+  border: 1px solid black;
+  overflow-y: scroll;
+
+  .suggestion--item {
+    border-bottom: 1px solid black;
+  }
+
+  .suggestion--item:hover {
+    text-decoration: underline;
+    cursor: pointer;
+    border-bottom: 1px solid black;
   }
 }
