@@ -54,7 +54,7 @@ const generateNewMessageObject = (userId, message) => {
     message: message,
     timestamp: `${timeNow.getHours()}:${timeNow.getMinutes()}`,
     unixTimestamp: timeNow,
-    to: "",
+    to: null,
     from: userId,
     id: uuidv(),
     recalled: false,
@@ -88,8 +88,6 @@ io.on("connect", async function (socket) {
      */
     const isThereAnActiveRoom = await roomService.doesRoomExist(roomId);
 
-    console.log("is there an active room?", isThereAnActiveRoom);
-
     if (!isThereAnActiveRoom) {
       console.log("creating new room on the server");
       roomService.createChatRoom(roomId);
@@ -98,14 +96,8 @@ io.on("connect", async function (socket) {
         roomId,
         generateDefaultRoomProperties(roomId)
       );
+      messagingLayer.createMessageStore(roomId);
     }
-
-    //eventually move this to mongo
-    rooms[roomId] = {
-      isLocked: false,
-      password: null,
-    };
-    messages[roomId] = [];
 
     await roomService.insertUserRecord(
       generateNewUserObject(userId, socket.id, isThereAnActiveRoom),
@@ -126,15 +118,19 @@ io.on("connect", async function (socket) {
       });
     });
 
-    //here javar
-
-    let joinedMessage = generateNewMessageObject(
-      userId,
-      `${userId} has joined the room`
+    let message = messagingLayer.composeNewMessage(
+      socket.id,
+      `${userId} has joined the room`,
+      null
     );
 
-    messages[roomId].push(joinedMessage);
-    socket.to(roomId).broadcast.emit("receive-message-client", joinedMessage);
+    await messagingLayer.storeMessage(message, roomId);
+    socket.to(roomId).broadcast.emit("receive-message-client", message);
+
+    const previousMessageState = await messagingLayer.getAllMessagesForRoom(
+      roomId
+    );
+    socket.emit("load-initial-message-state", previousMessageState);
 
     let connectedUsers = await roomService.getConnectedUsers();
 
@@ -147,17 +143,17 @@ io.on("connect", async function (socket) {
     /**
      *  eventually convert to async/await
      */
-    socket.on("audio-state-change", (audioState) => {
-      roomService
-        .updateUserBySocketId(socket.id, "properties.audioState", audioState)
-        .then(() => {
-          roomService.getConnectedUsers().then((users) => {
-            console.log("then....", users);
-            io.in(roomId).emit("load-connected-users", {
-              connections: users,
-            });
-          });
-        });
+    socket.on("audio-state-change", async (audioState) => {
+      await roomService.updateUserBySocketId(
+        socket.id,
+        "properties.audioState",
+        audioState
+      );
+
+      const users = await roomService.getConnectedUsers();
+      io.in(roomId).emit("load-connected-users", {
+        connections: users,
+      });
     });
 
     socket.on("video-state-change", (videoState) => {
@@ -179,38 +175,23 @@ io.on("connect", async function (socket) {
       console.log("message recieved", message);
 
       const dbUserInfo = await roomService.findRecord({ socketId: socket.id });
-
-      let currentTime = new Date(Date.now());
-      let messageObj = {
-        id: uuidv(),
-        message: message,
-        from: socket.id,
-        timestamp: `${currentTime.getHours()}:${currentTime.getMinutes()}`,
-        unixTimestamp: currentTime,
-        recalled: false,
-        customName: dbUserInfo.customName || null,
-      };
-      messages[roomId].push(messageObj);
-
-      io.in(roomId).emit("receive-message-client", messageObj);
+      const newMessage = messagingLayer.composeNewMessage(socket.id, message);
+      await messagingLayer.storeMessage(
+        newMessage,
+        roomId,
+        dbUserInfo.customName
+      );
+      io.in(roomId).emit("receive-message-client", newMessage);
     });
 
     /**
      *  Maybe keep the message, add recalled attribute to it. if recalled, don't show in client?
      */
-    socket.on("recall-message", (id) => {
-      messages[roomId] = messages[roomId].map((messageData) => {
-        if (messageData.id == id) {
-          return {
-            ...messageData,
-            recalled: true,
-          };
-        } else {
-          return messageData;
-        }
-      });
+    socket.on("recall-message", async (id) => {
+      await messagingLayer.recallMessage(id, roomId);
+      const allMessages = await messagingLayer.getAllMessagesForRoom(roomId);
 
-      io.in(roomId).emit("recall-success", messages[roomId]);
+      io.in(roomId).emit("recall-success", allMessages);
     });
 
     socket.on("chat-typing-notification-start", (id) => {
@@ -262,10 +243,7 @@ nextApp.prepare().then(() => {
     try {
       const password = req.body.password;
       const roomID = req.body.roomID;
-
       const isPasswordValid = await checkPassword(roomID, password);
-
-      console.log("is password valid?", isPasswordValid);
 
       return isPasswordValid
         ? res.send(JSON.stringify({ success: true }))

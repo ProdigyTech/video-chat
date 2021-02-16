@@ -79,6 +79,10 @@ export const Chat = ({
       setChatLogs(messages);
     });
 
+    socket.on("load-initial-message-state", (messages) => {
+      setChatLogs(messages);
+    });
+
     socket.on("chat-typing-notification-start", (id) => {
       setTypingNotification({ isTyping: true, userTypingId: id });
     });

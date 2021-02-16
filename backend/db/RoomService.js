@@ -4,7 +4,7 @@ const roomModel = require("./models/room");
 class RoomService extends DatabaseConnection {
   constructor() {
     super();
-    this.initialize("room");
+    this.initialize("rooms");
   }
   createChatRoom(roomID) {
     this.db.createCollection(roomID, roomModel);
