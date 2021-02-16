@@ -35,10 +35,11 @@ class MessengingService extends DatabaseConnection {
     }
   }
 
-  composeNewMessage(socketId, message, customName = null) {
+  composeNewMessage(socketId, message, customName = null, ipAddress) {
     let currentTime = this.getTimeStamp();
     return {
       id: uuidv(),
+      ipAddress: ipAddress,
       message: message,
       from: socketId,
       timestamp: `${currentTime.getHours()}:${currentTime.getMinutes()}`,
@@ -48,7 +49,6 @@ class MessengingService extends DatabaseConnection {
     };
   }
   async storeMessage(messageObj, roomId) {
-    console.log(messageObj);
     try {
       const collection = this.db.collection(roomId);
       return await collection.insertOne(messageObj);

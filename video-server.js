@@ -33,9 +33,6 @@ const ports = {
 
 const port = ports[process.env.NODE_ENV] || ports["dev"];
 
-let rooms = {};
-let messages = {};
-
 const generateNewUserObject = (userId, socketId, isThereAnActiveRoom) => {
   return {
     peerId: userId,
@@ -45,20 +42,6 @@ const generateNewUserObject = (userId, socketId, isThereAnActiveRoom) => {
       videoState: "playing",
     },
     isAdmin: !isThereAnActiveRoom ? true : false, //first user in room is admin by default
-  };
-};
-
-const generateNewMessageObject = (userId, message) => {
-  const timeNow = new Date(Date.now());
-  return {
-    message: message,
-    timestamp: `${timeNow.getHours()}:${timeNow.getMinutes()}`,
-    unixTimestamp: timeNow,
-    to: null,
-    from: userId,
-    id: uuidv(),
-    recalled: false,
-    customName: null,
   };
 };
 
@@ -121,7 +104,8 @@ io.on("connect", async function (socket) {
     let message = messagingLayer.composeNewMessage(
       socket.id,
       `${userId} has joined the room`,
-      null
+      null,
+      socket.handshake.address
     );
 
     await messagingLayer.storeMessage(message, roomId);
@@ -175,12 +159,13 @@ io.on("connect", async function (socket) {
       console.log("message recieved", message);
 
       const dbUserInfo = await roomService.findRecord({ socketId: socket.id });
-      const newMessage = messagingLayer.composeNewMessage(socket.id, message);
-      await messagingLayer.storeMessage(
-        newMessage,
-        roomId,
-        dbUserInfo.customName
+      const newMessage = messagingLayer.composeNewMessage(
+        socket.id,
+        message,
+        dbUserInfo.customName,
+        socket.handshake.address
       );
+      await messagingLayer.storeMessage(newMessage, roomId);
       io.in(roomId).emit("receive-message-client", newMessage);
     });
 

@@ -2,10 +2,14 @@ module.exports = {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["id", "message", "timestamp"],
+      required: ["id", "message", "timestamp", "ipAddress"],
       properties: {
         id: {
           bsonType: "string",
+          description: "must be a string and is required",
+        },
+        ipAddress: {
+          bsonType: ["string", "null"],
           description: "must be a string and is required",
         },
         message: {

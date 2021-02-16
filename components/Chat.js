@@ -169,6 +169,27 @@ export const Chat = ({
     }
   };
 
+  const checkUserSuggestions = (target) => {
+    console.log(target.value);
+    let value = target.value;
+
+    if (value.includes("@")) {
+      const userValue = value
+        .slice(value.indexOf("@") + 1, value.indexOf(" "))
+        .toLowerCase();
+
+      console.log("user value", userValue);
+      // const regex = new RegExp(userValue, "i");
+
+      const filteredUsers = connectedUsers.filter((u) => {
+        u.socketId.includes(userValue) || u.customName?.includes(userValue);
+
+        return false;
+      });
+      console.log("filtered...", filteredUsers);
+    }
+  };
+
   const handleKeyPress = (e) => {
     window.clearTimeout(timer);
     if (!showTypingNotification) {
@@ -258,8 +279,9 @@ export const Chat = ({
             ref={inputRef}
             value={messageBox}
             onChange={({ target }) => setMessageBox(target.value)}
-            onKeyDown={({ code }) => {
+            onKeyDown={({ code, target }) => {
               code == "Enter" && sendMessage();
+              checkUserSuggestions(target);
             }}
             onKeyUp={handleKeyUp}
             onKeyPress={handleKeyPress}
