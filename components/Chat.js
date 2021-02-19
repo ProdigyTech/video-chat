@@ -8,7 +8,6 @@ import {
   faReply,
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "./Dialog";
-import Typing from "react-typing-animation";
 
 export const Chat = ({
   socket,

@@ -24,8 +24,6 @@ const roomPropertiesService = new RoomPropertiesService();
 const messagingLayer = new MessageingLayer();
 const userService = new UserService();
 
-console.log("ENV: ", process.env.NODE_ENV);
-
 const ports = {
   production: 3100,
   dev: 3000,
@@ -143,7 +141,7 @@ io.on("connect", async function (socket) {
         socket.handshake.address,
         to[0]
       );
-      console.log(newMessage);
+
       await messagingLayer.storeMessage(newMessage, roomId);
       if (to.length > 0) {
         socket.broadcast.to(to[0]).emit("receive-message-client", newMessage);
